@@ -14,3 +14,6 @@ Basically what we need:
 - Someone to do the LLM part: aka smart note generation + flashcards + quizz generator with a nice interface
 - RAG Q&A feature
 - User cases diagrams + Platform architecture
+
+
+## source capstone/bin/activate
