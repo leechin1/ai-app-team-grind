@@ -15,9 +15,9 @@ from dotenv import load_dotenv
 # ==== Import our study tools ====
 import sys
 from pathlib import Path
-# Add parent directory to path so we can import gemini_tools
+# Add parent directory to path so we can import from interactions package
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from gemini_tools import FlashcardGenerator, QuizGenerator
+from interactions import FlashcardGenerator, QuizGenerator
 
 
 # Load environment + client
