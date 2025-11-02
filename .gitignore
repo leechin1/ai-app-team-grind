@@ -1,1 +1,18 @@
-.env 
+# Python cache files
+__pycache__/
+*.pyc
+*.pyo
+
+# Virtual environment
+ai_course_venv/
+.venv/
+
+# Environment variables
+.env
+
+# VS Code settings
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db
