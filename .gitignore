@@ -4,9 +4,8 @@ __pycache__/
 *.pyo
 
 # Virtual environment
-ai_course_venv/
+notiq_env/
 .venv/
-
 # Environment variables
 .env
 
