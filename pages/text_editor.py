@@ -12,6 +12,13 @@ from google import genai
 from google.genai import types
 from dotenv import load_dotenv
 
+# ==== Import our study tools ====
+import sys
+from pathlib import Path
+# Add parent directory to path so we can import gemini_tools
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from gemini_tools import FlashcardGenerator, QuizGenerator
+
 
 # Load environment + client
 load_dotenv()
@@ -44,8 +51,6 @@ with st.sidebar:
     filename = st.text_input("Filename (without extension)", value=default_name)
     fmt = st.selectbox("Format", ["markdown (.md)", "json (.json)"], index=0)
     subject = st.text_input("Subject", value="General")  # can map to supabase index
-    flashcards = st.text_input("😈 GENERATE FLASHCARDS", value="This is a fake button")
-    quizz = st.text_input("😈 GENERATE QUIZZ", value="This is a fake button")
 
 st.markdown("This editor uses **Quill** under the hood (Google Docs–style formatting).")
 
@@ -401,6 +406,38 @@ if st.button("🪄 Summarize with Gemini", use_container_width=True):
     summary_md = summarize_with_gemini(snapshot) or "_No summary generated._"
     st.session_state["last_summary"] = summary_md
     show_summary_popup(summary_md, title="📚 Session Summary — Notiq", filename_base=f"{(subject or 'notes').strip()}-summary")
+
+# NEW: Flashcard button
+if st.button("🃏 Generate Flashcards", use_container_width=True):
+    if not GEMINI_API_KEY:
+        st.error("Please set GEMINI_API_KEY in your .env file")
+    else:
+        snapshot = get_session_snapshot()
+        with st.spinner("Generating flashcards..."):
+            generator = FlashcardGenerator(GEMINI_API_KEY)
+            flashcards_md = generator.generate(snapshot) or "_No flashcards generated._"
+            st.session_state["last_flashcards"] = flashcards_md
+            show_summary_popup(
+                flashcards_md, 
+                title="🃏 Flashcards — Notiq", 
+                filename_base=f"{(subject or 'notes').strip()}-flashcards"
+            )
+
+# NEW: Quiz button
+if st.button("📝 Generate Quiz", use_container_width=True):
+    if not GEMINI_API_KEY:
+        st.error("Please set GEMINI_API_KEY in your .env file")
+    else:
+        snapshot = get_session_snapshot()
+        with st.spinner("Generating quiz..."):
+            generator = QuizGenerator(GEMINI_API_KEY)
+            quiz_md = generator.generate(snapshot, num_questions=10) or "_No quiz generated._"
+            st.session_state["last_quiz"] = quiz_md
+            show_summary_popup(
+                quiz_md, 
+                title="📝 Quiz — Notiq", 
+                filename_base=f"{(subject or 'notes').strip()}-quiz"
+            )
 
 # Optional: also expose the raw snapshot for debugging (collapsed)
 with st.expander("Debug: session snapshot (JSON)"):
