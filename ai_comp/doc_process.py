@@ -15,6 +15,7 @@ import docling
 import uuid
 import logging
 from supabase import Client
+import fitz
 
 
 load_dotenv()
