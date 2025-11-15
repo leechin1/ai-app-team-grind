@@ -1,0 +1,46 @@
+What has been done
+1- st_md.py -> PDF conversion to markdown + upload to supabase CHIN DONE
+2- text editor -> is already in markdown + upload to supabase CHIN DONE
+
+AI features
+1. Summary agent CHIN 
+2. Smart layout structuring -> streamlit type of layout
+
+
+2. RAG do supabase for questioning based on subjects ISAAC
+3. speech to text feature CICI
+4. flashcards CICI
+
+Features:
+- Login client based shit ISAAC https://github.com/mkhorasani/Streamlit-Authenticator
+- UI to glue everything together ISAAC
+
+
+
+Ideas:
+- Button to summarise
+- Button to open pop up window flashcards
+- RAG chatbot
+
+Missing:
+- Tracing
+
+
+Tools:
+- Supabase integration https://github.com/SiddhantSadangi/st_supabase_connection
+
+
+Immediate tasks:
+- better app.py (which is not app.py but it is the file uploading system)
+- Note: Think of image handling in text editor (or not handling)
+- Client own supabase client id for all data
+
+
+Line of work:
+- When user uploads the file -> a small ai summary function passes and stores the results in supabase under "Short Summary content" (1 liner + keywords 2-3)
+- All notes are rendered inside boxes ina. navigator page with the "Short Summary"
+- When you click for note:
+    - it shows 2 tabs:
+        1. raw markdowm+ editable button. if editable -> row is overwritten
+        2. rendered smart template 
+- Set up client based service + login
