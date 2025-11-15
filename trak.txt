@@ -36,11 +36,42 @@ Immediate tasks:
 - Client own supabase client id for all data
 
 
-Line of work:
+Line of work: ---------------------
+
+TASK ONE: 
+STATUS: INIT and working but not cleaned
+MISSING: AFTER RENDERING CLEAN everything
+
 - When user uploads the file -> a small ai summary function passes and stores the results in supabase under "Short Summary content" (1 liner + keywords 2-3)
+
+After upload rendering -> clean_text (which makes text more concise and saves it in supabase), short_summary, key_terms, template_type router
+
 - All notes are rendered inside boxes ina. navigator page with the "Short Summary"
 - When you click for note:
     - it shows 2 tabs:
         1. raw markdowm+ editable button. if editable -> row is overwritten
-        2. rendered smart template 
-- Set up client based service + login
+        2. clean text
+        3. image extraction
+Question: does it make sense to clean text or query straight from markdown?
+
+
+
+
+TaASK TWO:
+- Smart template integration
+Prolly streamlit structure and populate fields
+
+https://github.com/kj3moraes/almithal
+
+TASK TWO:
+Pulling and fetching documents + short summary to rendered
+- Show two tabs: 
+1. tab one= raw doc able to change
+2. tab two = smart table integration
+
+TASK TWO:
+Subject create
+
+
+TASK THREE:
+Clinet based

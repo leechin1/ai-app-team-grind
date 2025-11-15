@@ -1,4 +1,4 @@
-# Prototyping the Markdown file conversion 
+# Prototyping the Markdown file conversion. Component embedded in tab 2 of text_input
 
 # Import required libraries
 import streamlit as st  # Web app framework
