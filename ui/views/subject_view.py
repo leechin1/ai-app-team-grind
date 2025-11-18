@@ -15,6 +15,10 @@ def render_subject_view(supabase, logger):
     documents = fetch_documents_by_subject(supabase, subject)
     logger.info(f"Displaying {len(documents)} documents for '{subject}'")
 
+    if st.button("📝 Create New File", type="primary", use_container_width=True):
+        st.session_state.incoming_subject = subject
+        st.switch_page("pages/text_input.py")
+
     if not documents:
         st.info(f"No documents in '{subject}' yet. Upload your first document!")
 

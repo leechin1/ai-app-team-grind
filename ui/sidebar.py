@@ -8,16 +8,23 @@ from supabase_integration.fetching import (
 
 def render_sidebar(supabase):
     with st.sidebar:
-        st.title("📚 My Subjects")
-        st.markdown("---")
 
         # Get all subjects
         subjects = get_subject_folders(supabase)
 
+        # New Subject Button
+        if st.button("➕ New Subject", use_container_width=True, type="primary"):
+            st.session_state.show_new_subject_dialog = True
+            st.rerun()
+
+        # New Subject Dialog
+        if st.session_state.show_new_subject_dialog:
+            _render_new_subject_dialog(supabase)
+        
         if not subjects:
             st.warning("No subjects found. Create your first subject!")
         else:
-            st.markdown("### 📂 Folders")
+            st.markdown("### 📂 Your subjects")
             for subject in subjects:
                 if st.button(
                     f"📁 {subject}",
@@ -36,16 +43,7 @@ def render_sidebar(supabase):
 
         st.markdown("---")
 
-        # New Subject Button
-        if st.button("➕ New Subject", use_container_width=True, type="primary"):
-            st.session_state.show_new_subject_dialog = True
-            st.rerun()
-
-        # New Subject Dialog
-        if st.session_state.show_new_subject_dialog:
-            _render_new_subject_dialog(supabase)
         
-        st.markdown("---")
 
         if st.button("🚪 Logout", use_container_width=True):
             st.session_state.authenticated = False

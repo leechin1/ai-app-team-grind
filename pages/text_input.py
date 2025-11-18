@@ -28,6 +28,13 @@ supabase = init_supabase()
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
+# Read subject passed from subject_view
+if "incoming_subject" in st.session_state:
+    forced_subject = st.session_state.incoming_subject
+else:
+    forced_subject = None
+
+
 # Configure page
 st.set_page_config(
     page_title="Notiq",
@@ -58,10 +65,11 @@ with col1:
 
 with col2:
     selected_subject = st.selectbox(
-        "Subject Folder",
-        options=SUBJECT_FOLDERS,
-        key='global_subject_selector'
-    )
+    "Subject Folder",
+    options=SUBJECT_FOLDERS,
+    index=SUBJECT_FOLDERS.index(forced_subject) if forced_subject else 0,
+)
+
 
 st.markdown("---")
 
