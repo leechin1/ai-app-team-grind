@@ -15,3 +15,12 @@ notiq_env/
 # OS files
 .DS_Store
 Thumbs.db
+
+*.pdf
+*.docx
+*.jpg
+*.png
+
+output_*.json
+.pytest_cache/
+.ipynb_checkpoints/
