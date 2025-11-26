@@ -14,7 +14,7 @@ def test_flashcard():
     """test the criation of flashcards"""
     print("🧪 testing flashcard...")
     
-    # Criação válida
+    # Creation validated 
     card = Flashcard(
         front="O que é mitocôndria?",
         back="Organela responsável pela produção de energia (ATP)",
@@ -22,25 +22,25 @@ def test_flashcard():
         tags=["biologia", "célula"]
     )
     
-    print(f"✅ Flashcard criado: ID={card.id[:8]}...")
+    print(f"✅ Flashcard created : ID={card.id[:8]}...")
     print(f"   Front: {card.front}")
-    print(f"   Dificuldade: {card.difficulty.value}")
+    print(f"   Dificulty: {card.difficulty.value}")
     
-    # Testa validação - isto DEVE falhar
+    # validation test - this should fail
     try:
         invalid_card = Flashcard(
-            front="",  # Vazio! Deve dar erro
+            front="",  # empty should give an error
             back="Test"
         )
-        print("❌ ERRO: Aceitou front vazio!")
+        print("❌ ERROR: accepted an empty error!")
     except Exception as e:
-        print(f"✅ Validação funcionou: {type(e).__name__}")
+        print(f"✅ the validation worked: {type(e).__name__}")
 
 def test_quiz_question():
-    """Testa criação de quiz question"""
-    print("\n🧪 Testando QuizQuestion...")
+    """tests the quizz question creation"""
+    print("\n🧪 testing QuizQuestion...")
     
-    # Válida
+    # válid
     q = QuizQuestion(
         question="Qual a função da mitocôndria?",
         options=[
