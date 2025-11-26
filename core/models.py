@@ -8,15 +8,15 @@ These schemas will be used throught the applicaton for :
 These estabilish the data format used in the app
 
 """
-from pydantic import BaseModel, Field, validator, conlist
+from pydantic import BaseModel, Field, validator, model_validator
 from typing import List, Optional, Literal
 from enum import Enum
 from datetime import datetime
 import uuid
 
-class DifficultyLevel(str, enum) : 
+class DifficultyLevel(str, Enum) : 
     """
-    Difficulty level os the quizzes
+    Difficulty level os the quizzes                               
 
     """
 
@@ -24,7 +24,7 @@ class DifficultyLevel(str, enum) :
     MEDIUM = "medium"
     HARD = "hard"
 
-class DocumentType(str, enum):
+class DocumentType(str, Enum):
     """
     Type of documents supported
     
@@ -45,15 +45,15 @@ class FlashCard(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
 
     #Front side of the card 
-    front: str Field(..., 
+    front: str = Field(..., 
                      min_length= 1 , 
-                     max_length= 500
+                     max_length= 500,
                      description= "front of de card with the concept")
     
     #back side of the card
-    back: str Field(..., 
-                    min_length= 1
-                    max_length= 2000
+    back: str = Field(..., 
+                    min_length= 1,
+                    max_length= 2000,
                     description= "back of the card with the explanation"
                     )
     #base difficulty level 
@@ -72,12 +72,12 @@ class FlashCard(BaseModel):
 
 
     # next revision 
-    next_review_date : Optional[datetime]
+    next_review_date : Optional[datetime] = None
 
     #results
     review_count : int = 0
 
-    esase_factor  = 2.5
+    ease_factor : float = 2.5
 
 class FlashcardGenerationRequest(BaseModel) : 
     """ 
@@ -94,7 +94,7 @@ class FlashcardGenerationRequest(BaseModel) :
     
     """
     # content to generate the flashcards
-    content : str Field(..., min_length= 50)
+    content : str = Field(..., min_length= 50)
 
     # number of generated cards
     num_cards : int = Field(default = 10 , ge = 1, le = 50)
@@ -111,7 +111,7 @@ class FlashcardGenerationResponse(BaseModel):
     """
 
     #list with the generated flashcards
-    flashcards : List(FlashCard)
+    flashcards : List[FlashCard]
 
     # how many flashcards where generates
     total_generated : int
@@ -126,18 +126,18 @@ class FlashcardGenerationResponse(BaseModel):
 
 # -------------- quizzes ----------------------------------------
 
-class QuizzQuestion(BaseModel): 
+class QuizQuestion(BaseModel): 
     """
     one multiple choide quizz question
     
     """
-    id : str = Field(default_factory= lambda str(uuid.uuid4()))
+    id : str = Field(default_factory= lambda : str(uuid.uuid4()))
 
     # the question 
     question : str = Field(..., min_length= 10)
 
     # option for the answer 
-    options: conlist(str, min_length=4, max_length=4)
+    options: List[str] = Field(min_length=4, max_length=4)
     
     #correct answer 
     correct_answer_index: int = Field(..., ge=0, le=3)  # 0 a 3
@@ -151,23 +151,23 @@ class QuizzQuestion(BaseModel):
     # orignal source text
     source_text : Optional[str] = None
 
-# validator
-@validator('correct_answer_index')
-def validate_correct_index(): 
-    """
-    Garantees that correct_answer_index isn't outside pf the range of options.
-    
-    Exemple:
-    - if options = ["A", "B", "C", "D"] (4 itens)
-    - correct_answer_index can be 0, 1, 3 or 4
-    - if it is  4 or more raises an error!
-    """
-    if 'options' in values and v >= len(values['options']):
-        raise ValueError(
-            f'correct_answer_index ({v}) outside of the range. '
-            f'Options has {len(values["options"])} items.'
-        )
-    return v
+    # validator
+    @validator('correct_answer_index')
+    def validate_correct_index(cls, v, values):
+        """
+        Garantees that correct_answer_index isn't outside of the range of options.
+        
+        Exemple:
+        - if options = ["A", "B", "C", "D"] (4 itens)
+        - correct_answer_index can be 0, 1, 2 or 3
+        - if it is 4 or more raises an error!
+        """
+        if 'options' in values and v >= len(values['options']):
+            raise ValueError(
+                f'correct_answer_index ({v}) outside of the range. '
+                f'Options has {len(values["options"])} items.'
+            )
+        return v
 
 class QuizAnswer(BaseModel):
     """
@@ -210,10 +210,18 @@ class QuizResult(BaseModel):
     total_questions: int
 
     # Score final (0-100)
-    score: float = (correct_count/total_questions)*100
+    score: float = 0.0
     
     # time where the quizz was completed
     completed_at: datetime = Field(default_factory=datetime.now)
+
+    #  validator to auto-set score 
+    @model_validator(mode='after')
+    def calculate_score(self):
+        """Auto-calculate score after all fields are set"""
+        if self.total_questions > 0:
+            self.score = (self.correct_count / self.total_questions) * 100
+        return self
 
 # ---------------------------- Documents ---------------------------------------------------------------------
 

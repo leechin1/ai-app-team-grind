@@ -15,7 +15,7 @@ def test_flashcard():
     print("🧪 testing flashcard...")
     
     # Creation validated 
-    card = Flashcard(
+    card = FlashCard(
         front="O que é mitocôndria?",
         back="Organela responsável pela produção de energia (ATP)",
         difficulty=DifficultyLevel.EASY,
@@ -28,7 +28,7 @@ def test_flashcard():
     
     # validation test - this should fail
     try:
-        invalid_card = Flashcard(
+        invalid_card = FlashCard(
             front="",  # empty should give an error
             back="Test"
         )
@@ -74,7 +74,7 @@ def test_serialization():
     """Testa conversão para JSON"""
     print("\n🧪 Testando serialização JSON...")
     
-    card = Flashcard(
+    card = FlashCard(
         front="Teste",
         back="Resposta",
         tags=["tag1"]
