@@ -2,7 +2,7 @@
 Extração de texto de imagens usando Gemini Vision API.
 """
 
-import google.generativeai as genai
+from google import genai
 from PIL import Image
 import io
 
@@ -17,9 +17,10 @@ class GeminiVisionExtractor:
     """
     
     def __init__(self, api_key: str):
-        genai.configure(api_key=api_key)
+        # Inicializa cliente com a nova SDK
+        self.client = genai.Client(api_key=api_key)
         # Usa modelo com capacidades de visão
-        self.model = genai.GenerativeModel('gemini-2.5-flash-lite')
+        self.model_name = 'gemini-2.0-flash'
     
     def extract_text_from_image(self, image_bytes: bytes) -> str:
         """
@@ -60,9 +61,12 @@ class GeminiVisionExtractor:
             Texto extraído:
             """
             
-            # Envia imagem + prompt para Gemini
-            response = self.model.generate_content([prompt, image])
-            
+            # Envia imagem + prompt para Gemini usando nova SDK
+            response = self.client.models.generate_content(
+                model=self.model_name,
+                contents=[prompt, image]
+            )
+
             text = response.text.strip()
             
             # Valida resultado
@@ -109,8 +113,11 @@ class GeminiVisionExtractor:
             
             Não adiciones ```json nem explicações, só o JSON.
             """
-            
-            response = self.model.generate_content([prompt, image])
+
+            response = self.client.models.generate_content(
+                model=self.model_name,
+                contents=[prompt, image]
+            )
             
             import json
             import re
