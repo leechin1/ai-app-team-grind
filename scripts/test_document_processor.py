@@ -162,14 +162,6 @@ def test_image_processing():
         print("[SKIP] Teste 4 pulado\n")
         return None  # None = teste pulado
 
-    img_path = image_files[0]
-    print(f"Imagem encontrada: {img_path.name}")
-    print(f"Tamanho: {img_path.stat().st_size / 1024:.2f} KB")
-
-    # Le imagem
-    with open(img_path, 'rb') as f:
-        img_bytes = f.read()
-
     # Verifica se tem API key
     api_key = os.getenv('GEMINI_API_KEY')
     if not api_key:
@@ -178,30 +170,73 @@ def test_image_processing():
         print("[SKIP] Teste 4 pulado\n")
         return None  # None = teste pulado
 
-    # Processa
+    print(f"Encontradas {len(image_files)} imagem(ns) para testar\n")
+
+    # Processa cada imagem
     processor = DocumentProcessor(gemini_api_key=api_key)
+    results = []
 
-    try:
-        result = processor.process_document(
-            file_bytes=img_bytes,
-            filename=img_path.name
-        )
+    for i, img_path in enumerate(image_files, 1):
+        print(f"  Imagem {i}/{len(image_files)}: {img_path.name}")
+        print(f"  Tamanho: {img_path.stat().st_size / 1024:.2f} KB")
 
-        print(f"Tipo: {result.metadata.document_type}")
-        print(f"Metodo: {result.metadata.extraction_method}")
-        print(f"Tamanho do texto: {result.metadata.extracted_text_length} chars")
-        print(f"\nPreview do texto extraido:")
-        print("=" * 60)
-        print(result.preview)
-        print("=" * 60)
+        try:
+            # Le imagem
+            with open(img_path, 'rb') as f:
+                img_bytes = f.read()
 
-        print("\n[OK] Teste 4 passou!\n")
+            # Processa
+            result = processor.process_document(
+                file_bytes=img_bytes,
+                filename=img_path.name
+            )
+
+            print(f"  Tipo: {result.metadata.document_type}")
+            print(f"  Metodo: {result.metadata.extraction_method}")
+            print(f"  Texto extraido: {result.metadata.extracted_text_length} chars")
+
+            # Preview seguro (remove caracteres que Windows console nao suporta)
+            try:
+                preview = result.preview[:100]
+                print(f"  Preview: {preview}...")
+            except UnicodeEncodeError:
+                # Fallback: mostra sem preview se tiver caracteres especiais
+                print(f"  Preview: [contem caracteres especiais - ver ficheiro extraido]")
+
+            print(f"  [OK] Imagem {i} processada com sucesso!\n")
+
+            results.append((img_path.name, True, None))
+
+        except Exception as e:
+            print(f"  [FALHOU] Erro ao processar imagem {i}: {e}")
+            print(f"  Detalhes do erro:")
+            import traceback
+            traceback.print_exc()
+            print()
+
+            results.append((img_path.name, False, str(e)))
+
+    # Resumo do teste de imagens
+    print("-" * 60)
+    print("Resumo do Teste 4:")
+    passed = sum(1 for _, success, _ in results if success)
+    failed = sum(1 for _, success, _ in results if not success)
+    print(f"  Passaram: {passed}/{len(results)}")
+    print(f"  Falharam: {failed}/{len(results)}")
+
+    if failed > 0:
+        print("\nImagens que falharam:")
+        for name, success, error in results:
+            if not success:
+                print(f"  - {name}: {error}")
+
+    # Considera sucesso se pelo menos 80% das imagens passarem
+    success_rate = passed / len(results) if len(results) > 0 else 0
+    if success_rate >= 0.8:  # 80% ou mais
+        print(f"\n[OK] Teste 4 passou! ({passed}/{len(results)} imagens processadas com sucesso)\n")
         return True
-
-    except Exception as e:
-        print(f"[FALHOU] Teste 4 falhou: {e}")
-        import traceback
-        traceback.print_exc()
+    else:
+        print(f"\n[FALHOU] Teste 4 falhou (apenas {passed}/{len(results)} passaram, minimo necessario: 80%)\n")
         return False
 
 

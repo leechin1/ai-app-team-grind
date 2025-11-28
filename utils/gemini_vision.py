@@ -67,6 +67,13 @@ class GeminiVisionExtractor:
                 contents=[prompt, image]
             )
 
+            # Verifica se a resposta tem texto
+            if not response or not hasattr(response, 'text') or response.text is None:
+                raise ValueError(
+                    "Gemini nao retornou resposta valida. "
+                    "A imagem pode nao conter texto legivel ou houve erro na API."
+                )
+
             text = response.text.strip()
             
             # Valida resultado
