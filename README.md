@@ -55,3 +55,9 @@ python scripts/generate_study_materials.py biology.pdf --no-flashcards
 # Mudar diretório de output
 python scripts/generate_study_materials.py biology.pdf --output-dir meus_resultados
 ## source capstone/bin/activate
+
+
+****Proximos passos:
+   1. Abre os ficheiros JSON para ver os resultados completos
+   2. Importa para a tua app React
+   3. Ou usa como referencia para criar API
