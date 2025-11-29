@@ -1,0 +1,90 @@
+{
+  "flashcards": [
+    {
+      "id": "6b6bee60-34df-480b-9235-3db89c5ecc57",
+      "front": "O que são Sociedades de Microcrédito (SMC)?",
+      "back": "Instituições financeiras não bancárias autorizadas pelo BNA a conceder pequenos empréstimos para consumo ou atividade econômica.",
+      "difficulty": "easy",
+      "tags": [
+        "microcrédito",
+        "finanças",
+        "SMC"
+      ],
+      "source_text": null,
+      "created_at": "2025-11-29 19:51:01.868740",
+      "next_review_date": null,
+      "review_count": 0,
+      "ease_factor": 2.5
+    },
+    {
+      "id": "f1939cb4-ff75-4e82-860e-9ba4f9148177",
+      "front": "Qual o valor máximo de microcrédito para clientes de SMCs?",
+      "back": "O valor máximo é de Kz 2.500.000,00 (dois milhões e quinhentos mil Kwanzas) por cliente.",
+      "difficulty": "medium",
+      "tags": [
+        "microcrédito",
+        "limite",
+        "SMC"
+      ],
+      "source_text": null,
+      "created_at": "2025-11-29 19:51:01.868740",
+      "next_review_date": null,
+      "review_count": 0,
+      "ease_factor": 2.5
+    },
+    {
+      "id": "8820ec9d-b43c-4d6a-87f0-28d84ea8e533",
+      "front": "O que são Operadores de Microcrédito?",
+      "back": "São sociedades comerciais não financeiras (incluindo ONGs) que concedem microcrédito, mas não exclusivamente. Estão sujeitas a registro no BNA.",
+      "difficulty": "medium",
+      "tags": [
+        "microcrédito",
+        "operadores",
+        "ONGs"
+      ],
+      "source_text": null,
+      "created_at": "2025-11-29 19:51:01.868740",
+      "next_review_date": null,
+      "review_count": 0,
+      "ease_factor": 2.5
+    },
+    {
+      "id": "bcaabcd5-ad8e-4d04-8cbe-cf2938d2c0db",
+      "front": "Qual a principal diferença entre SMCs e Operadores de Microcrédito?",
+      "back": "SMCs são instituições financeiras autorizadas, enquanto Operadores de Microcrédito são entidades (incluindo ONGs) registradas no BNA, não exclusivamente dedicadas a microcrédito, e sujeitas a diferentes níveis de supervisão.",
+      "difficulty": "hard",
+      "tags": [
+        "microcrédito",
+        "comparação",
+        "SMC",
+        "operadores"
+      ],
+      "source_text": null,
+      "created_at": "2025-11-29 19:51:01.868740",
+      "next_review_date": null,
+      "review_count": 0,
+      "ease_factor": 2.5
+    },
+    {
+      "id": "238a5288-157a-4f41-941c-9985f2bc1086",
+      "front": "Qual o limite máximo de microcrédito concedido por Operadores?",
+      "back": "Operadores de Microcrédito podem conceder até Kz 250.000,00 (duzentos e cinquenta mil Kwanzas).",
+      "difficulty": "easy",
+      "tags": [
+        "microcrédito",
+        "limite",
+        "operadores"
+      ],
+      "source_text": null,
+      "created_at": "2025-11-29 19:51:01.868740",
+      "next_review_date": null,
+      "review_count": 0,
+      "ease_factor": 2.5
+    }
+  ],
+  "metadata": {
+    "total_generated": 5,
+    "generation_time": 3.06,
+    "content_length": 3794
+  }
+}

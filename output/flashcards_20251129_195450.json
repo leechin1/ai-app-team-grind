@@ -1,0 +1,170 @@
+{
+  "flashcards": [
+    {
+      "id": "4542c884-6029-4fb8-abd2-c4c62bbf9c97",
+      "front": "O que são Sociedades de Microcrédito (SMC)?",
+      "back": "Instituições financeiras não bancárias autorizadas a conceder pequenos empréstimos a particulares ou grupos para consumo ou atividade econômica.",
+      "difficulty": "easy",
+      "tags": [
+        "microcrédito",
+        "finanças",
+        "SMC"
+      ],
+      "source_text": null,
+      "created_at": "2025-11-29 19:54:43.604077",
+      "next_review_date": null,
+      "review_count": 0,
+      "ease_factor": 2.5
+    },
+    {
+      "id": "6de44e8f-ec8a-4d38-8da3-e847448a661e",
+      "front": "Qual o capital social mínimo para constituir uma SMC?",
+      "back": "O capital social mínimo é de Kz 5.000.000,00 (Cinco milhões de Kwanzas).",
+      "difficulty": "medium",
+      "tags": [
+        "microcrédito",
+        "SMC",
+        "requisitos"
+      ],
+      "source_text": null,
+      "created_at": "2025-11-29 19:54:43.604077",
+      "next_review_date": null,
+      "review_count": 0,
+      "ease_factor": 2.5
+    },
+    {
+      "id": "ee833b30-510b-4e53-990b-394518ad4db0",
+      "front": "Quais serviços uma SMC pode prestar?",
+      "back": "Concessão de crédito de pequeno montante, consultoria a clientes e concessão de garantias.",
+      "difficulty": "easy",
+      "tags": [
+        "microcrédito",
+        "SMC",
+        "serviços"
+      ],
+      "source_text": null,
+      "created_at": "2025-11-29 19:54:43.604077",
+      "next_review_date": null,
+      "review_count": 0,
+      "ease_factor": 2.5
+    },
+    {
+      "id": "2426ad87-6c97-48c0-a6ab-a2c75ea4c25a",
+      "front": "Qual o valor máximo de microcrédito por cliente (SMC)?",
+      "back": "O valor máximo de microcrédito por cliente é de Kz 2.500.000,00 (dois milhões e quinhentos mil Kwanzas).",
+      "difficulty": "medium",
+      "tags": [
+        "microcrédito",
+        "SMC",
+        "limite"
+      ],
+      "source_text": null,
+      "created_at": "2025-11-29 19:54:43.604077",
+      "next_review_date": null,
+      "review_count": 0,
+      "ease_factor": 2.5
+    },
+    {
+      "id": "b9d90028-2077-4544-be69-87161fec2341",
+      "front": "O que são Operadores de Microcrédito?",
+      "back": "Sociedades comerciais não financeiras que concedem microcrédito, incluindo ONGs, associações, fundações e entidades públicas.",
+      "difficulty": "easy",
+      "tags": [
+        "microcrédito",
+        "operadores",
+        "ONG"
+      ],
+      "source_text": null,
+      "created_at": "2025-11-29 19:54:43.604077",
+      "next_review_date": null,
+      "review_count": 0,
+      "ease_factor": 2.5
+    },
+    {
+      "id": "6121477a-4e4d-4d05-8dac-eaeaac275ac4",
+      "front": "Operadores de Microcrédito precisam de licenciamento do BNA?",
+      "back": "Não. Estão sujeitos apenas a um registro no BNA.",
+      "difficulty": "medium",
+      "tags": [
+        "microcrédito",
+        "operadores",
+        "BNA"
+      ],
+      "source_text": null,
+      "created_at": "2025-11-29 19:54:43.604077",
+      "next_review_date": null,
+      "review_count": 0,
+      "ease_factor": 2.5
+    },
+    {
+      "id": "7778a746-192a-4ed0-9081-1bf71e4aab39",
+      "front": "Os Operadores de Microcrédito estão sujeitos à supervisão do BNA?",
+      "back": "Não, apenas a um monitoramento, reportando informações trimestralmente para fins estatísticos.",
+      "difficulty": "medium",
+      "tags": [
+        "microcrédito",
+        "operadores",
+        "BNA"
+      ],
+      "source_text": null,
+      "created_at": "2025-11-29 19:54:43.604077",
+      "next_review_date": null,
+      "review_count": 0,
+      "ease_factor": 2.5
+    },
+    {
+      "id": "044c6a7c-6ca4-47ef-934b-4cef77dea41b",
+      "front": "Qual a finalidade do microcrédito (Operadores)?",
+      "back": "O microcrédito tem como finalidade o consumo ou o desenvolvimento de uma atividade econômica.",
+      "difficulty": "easy",
+      "tags": [
+        "microcrédito",
+        "operadores",
+        "finalidade"
+      ],
+      "source_text": null,
+      "created_at": "2025-11-29 19:54:43.604077",
+      "next_review_date": null,
+      "review_count": 0,
+      "ease_factor": 2.5
+    },
+    {
+      "id": "595612e7-977c-4f25-b4d5-b09093d0b2cd",
+      "front": "A quem se destina o microcrédito (SMC e Operadores)?",
+      "back": "A pessoas particulares ou a grupos solidários (SMC) e a todo e qualquer cidadão habilitado (Operadores).",
+      "difficulty": "hard",
+      "tags": [
+        "microcrédito",
+        "SMC",
+        "operadores",
+        "beneficiários"
+      ],
+      "source_text": null,
+      "created_at": "2025-11-29 19:54:43.604077",
+      "next_review_date": null,
+      "review_count": 0,
+      "ease_factor": 2.5
+    },
+    {
+      "id": "a24c6593-6ce9-441b-af9d-0db86960fbdf",
+      "front": "Qual o valor máximo do microcrédito (Operadores)?",
+      "back": "Os operadores podem conceder até Kz 250.000,00 (Duzentos e cinquenta mil Kwanzas).",
+      "difficulty": "medium",
+      "tags": [
+        "microcrédito",
+        "operadores",
+        "limite"
+      ],
+      "source_text": null,
+      "created_at": "2025-11-29 19:54:43.604077",
+      "next_review_date": null,
+      "review_count": 0,
+      "ease_factor": 2.5
+    }
+  ],
+  "metadata": {
+    "total_generated": 10,
+    "generation_time": 5.86,
+    "content_length": 3794
+  }
+}

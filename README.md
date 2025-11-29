@@ -26,5 +26,32 @@ To improove :
                         - convert math handwriting in a LaTex like pdf with math symbols
                         - search other tools to give to the Gemini 
 
-3. 
+
+Como usar o generate_study_materials.py (Gera quizzes e flashcards) : \
+# Com PDF
+python scripts/generate_study_materials.py notas_biologia.pdf
+
+# Com imagem
+python scripts/generate_study_materials.py lecture_slide.jpg
+
+# Com texto direto
+python scripts/generate_study_materials.py --text "A mitocôndria é a powerhouse da célula..."
+
+# Com ficheiro TXT
+python scripts/generate_study_materials.py resumo.txt
+
+# Personalizar número de flashcards e questões
+python scripts/generate_study_materials.py biology.pdf --cards 20 --quiz 15
+
+# Filtrar por dificuldade
+python scripts/generate_study_materials.py biology.pdf --difficulty easy
+
+# Gerar apenas flashcards (sem quiz)
+python scripts/generate_study_materials.py biology.pdf --no-quiz
+
+# Gerar apenas quiz (sem flashcards)
+python scripts/generate_study_materials.py biology.pdf --no-flashcards
+
+# Mudar diretório de output
+python scripts/generate_study_materials.py biology.pdf --output-dir meus_resultados
 ## source capstone/bin/activate
