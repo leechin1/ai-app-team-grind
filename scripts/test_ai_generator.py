@@ -121,13 +121,7 @@ def test_flashcard_generation():
         print(f"\n✅ Sucesso!")
         print(f"   📊 Flashcards gerados: {response.total_generated}")
         print(f"   ⏱️  Tempo de geração: {response.generation_time_seconds}s")
-        print(f"   📚 Tópicos identificados: {', '.join(response.identified_topics[:5])}")
-        print(f"   📈 Dificuldade do conteúdo: {response.content_difficulty_assessment.value if response.content_difficulty_assessment else 'N/A'}")
-        
-        if response.warnings:
-            print(f"   ⚠️  Warnings: {len(response.warnings)}")
-            for w in response.warnings:
-                print(f"      - {w}")
+        print(f"   📏 Tamanho do conteudo: {response.content_length} chars")
         
         # Mostra alguns flashcards
         print(f"\n   📇 Exemplos de flashcards gerados:")
@@ -183,7 +177,7 @@ def test_quiz_generation():
         # Mostra as questões
         print(f"\n   📝 Questões do quiz:")
         for i, q in enumerate(questions, 1):
-            print(f"\n   Questão {i} [{q.difficulty.value.upper()}]:")
+            print(f"\n   Questão {i}:")
             print(f"      {q.question}")
             print(f"      Opções:")
             for j, opt in enumerate(q.options):

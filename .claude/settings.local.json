@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(notiq_env/Scripts/python.exe:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

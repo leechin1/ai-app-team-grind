@@ -90,7 +90,7 @@ class AIContentGenerator:
         if not 1 <= num_cards <= 50:
             raise ValueError("num_cards deve estar entre 1 e 50")
         
-        print(f"Gerando {num_cards} flashcards...")
+        print(f"🎴 Gerando {num_cards} flashcards...")
         
         # Constrói prompt
         prompt = self._build_flashcard_prompt(
@@ -123,7 +123,7 @@ class AIContentGenerator:
             except Exception as e:
                 warning = f"Card {i+1} inválido: {str(e)[:80]}"
                 warnings.append(warning)
-                print(f"   [AVISO] {warning}")
+                print(f"   ⚠️  {warning}")
         
         # Verifica que gerou pelo menos alguns
         if len(flashcards) == 0:
@@ -148,14 +148,19 @@ class AIContentGenerator:
             for tag in card.tags
         ))
         
-        print(f"[OK] Gerados {len(flashcards)} flashcards em {generation_time:.1f}s")
+        print(f"✅ Gerados {len(flashcards)} flashcards em {generation_time:.1f}s")
         
-        # Retorna response (using only fields defined in FlashcardGenerationResponse model)
+        # Retorna response
         return FlashcardGenerationResponse(
             flashcards=flashcards,
             total_generated=len(flashcards),
-            content_length=len(content),
-            generation_time_seconds=round(generation_time, 2)
+            generation_time_seconds=round(generation_time, 2),
+            content_length_chars=len(content),
+            estimated_reading_time_minutes=round(estimated_reading_time, 1),
+            identified_topics=identified_topics,
+            content_difficulty_assessment=self._assess_content_difficulty(flashcards),
+            warnings=warnings,
+            gemini_model_used=self.model_name
         )
     
     def _build_flashcard_prompt(
@@ -262,7 +267,7 @@ CRÍTICO: Retorna APENAS o array JSON válido. Sem ```json, sem texto extra, sem
         if not 1 <= num_questions <= 20:
             raise ValueError("num_questions deve estar entre 1 e 20")
         
-        print(f"Gerando {num_questions} questoes de quiz...")
+        print(f"📝 Gerando {num_questions} questões de quiz...")
         
         # Constrói prompt
         prompt = self._build_quiz_prompt(
@@ -291,12 +296,12 @@ CRÍTICO: Retorna APENAS o array JSON válido. Sem ```json, sem texto extra, sem
                 questions.append(question)
                 
             except Exception as e:
-                print(f"   [AVISO] Questao {i+1} invalida: {str(e)[:80]}")
+                print(f"   ⚠️  Questão {i+1} inválida: {str(e)[:80]}")
         
         if len(questions) == 0:
             raise ValueError("Nenhuma questão válida foi gerada")
         
-        print(f"[OK] Geradas {len(questions)} questoes validas")
+        print(f"✅ Geradas {len(questions)} questões válidas")
         
         return questions
     
@@ -409,7 +414,7 @@ CRÍTICO:
                 
             except Exception as e:
                 error_msg = str(e)
-                print(f"   [AVISO] Tentativa {attempt + 1}/{max_retries} falhou: {error_msg[:80]}")
+                print(f"   ⚠️  Tentativa {attempt + 1}/{max_retries} falhou: {error_msg[:80]}")
                 
                 if attempt < max_retries - 1:
                     # Exponential backoff
