@@ -15,5 +15,16 @@ Basically what we need:
 - RAG Q&A feature
 - User cases diagrams + Platform architecture
 
+To improove : 
+1. in the core/ai_generator.py : - System prompt 
+                              - json output like in the classes
+                              - temperature like the classes
+                              - vereficar _call_gemini_with_retry e helper methods
+  
+2. Give ai tools like : - an ML model to improve handwriting recognitions 
+                        - In the document processor give gemini TeX and math outuput in a pdf \
+                        - convert math handwriting in a LaTex like pdf with math symbols
+                        - search other tools to give to the Gemini 
 
+3. 
 ## source capstone/bin/activate
