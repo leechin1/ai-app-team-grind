@@ -1,0 +1,263 @@
+{
+  "timestamp": "2025-11-29T20:12:08.177550",
+  "input": {
+    "type": "file",
+    "file": "microcredito_angola.pdf",
+    "metadata": {
+      "document_id": "28e2f665-7107-42a2-8398-8df5a2df87f8",
+      "document_type": "pdf",
+      "filename": "microcredito_angola.pdf",
+      "file_size_bytes": 125603,
+      "extracted_text_length": 3794,
+      "extraction_method": "pypdf2",
+      "processed_at": "2025-11-29 20:12:08.532023",
+      "num_pages": 3
+    }
+  },
+  "flashcards": {
+    "flashcards": [
+      {
+        "id": "ac99d676-2592-44fb-9cb2-10d349f39243",
+        "front": "O que são Sociedades de Microcrédito (SMC)?",
+        "back": "Instituições financeiras não bancárias autorizadas a conceder pequenos empréstimos para consumo ou desenvolvimento económico.",
+        "difficulty": "easy",
+        "tags": [
+          "microcrédito",
+          "finanças",
+          "SMC"
+        ],
+        "source_text": null,
+        "created_at": "2025-11-29 20:12:13.746907",
+        "next_review_date": null,
+        "review_count": 0,
+        "ease_factor": 2.5
+      },
+      {
+        "id": "3a95de46-f96c-42d8-8d45-546a4dbf0a35",
+        "front": "Qual o capital social mínimo para constituir uma SMC?",
+        "back": "Kz 5.000.000,00 (Cinco milhões de Kwanzas).",
+        "difficulty": "medium",
+        "tags": [
+          "microcrédito",
+          "SMC",
+          "requisitos"
+        ],
+        "source_text": null,
+        "created_at": "2025-11-29 20:12:13.746907",
+        "next_review_date": null,
+        "review_count": 0,
+        "ease_factor": 2.5
+      },
+      {
+        "id": "584e2ef5-39e5-487b-97b8-d43323f17fb8",
+        "front": "Qual o valor máximo de microcrédito por cliente em uma SMC?",
+        "back": "Kz 2.500.000,00 (dois milhões e quinhentos mil Kwanzas).",
+        "difficulty": "easy",
+        "tags": [
+          "microcrédito",
+          "SMC",
+          "limite"
+        ],
+        "source_text": null,
+        "created_at": "2025-11-29 20:12:13.746907",
+        "next_review_date": null,
+        "review_count": 0,
+        "ease_factor": 2.5
+      },
+      {
+        "id": "75ee27e9-174f-4f32-a67d-08ab126b98ba",
+        "front": "O que são Operadores de Microcrédito?",
+        "back": "Sociedades comerciais não financeiras que concedem microcrédito, incluindo ONGs e entidades públicas.",
+        "difficulty": "easy",
+        "tags": [
+          "microcrédito",
+          "operadores",
+          "ONG"
+        ],
+        "source_text": null,
+        "created_at": "2025-11-29 20:12:13.746907",
+        "next_review_date": null,
+        "review_count": 0,
+        "ease_factor": 2.5
+      },
+      {
+        "id": "18f922ae-3b2d-47ae-8544-163a7d8b64f7",
+        "front": "Qual a diferença entre licenciamento e registo no BNA?",
+        "back": "SMCs precisam de licenciamento. Operadores de microcrédito precisam apenas de registo.",
+        "difficulty": "medium",
+        "tags": [
+          "microcrédito",
+          "BNA",
+          "SMC",
+          "operadores"
+        ],
+        "source_text": null,
+        "created_at": "2025-11-29 20:12:13.746907",
+        "next_review_date": null,
+        "review_count": 0,
+        "ease_factor": 2.5
+      },
+      {
+        "id": "171f1102-f0f7-48fe-85e3-de3df045a2fe",
+        "front": "Operadores de microcrédito estão sujeitos à supervisão do BNA?",
+        "back": "Não, estão sujeitos apenas a um monitoramento, com reporte trimestral de informação estatística.",
+        "difficulty": "medium",
+        "tags": [
+          "microcrédito",
+          "operadores",
+          "BNA"
+        ],
+        "source_text": null,
+        "created_at": "2025-11-29 20:12:13.746907",
+        "next_review_date": null,
+        "review_count": 0,
+        "ease_factor": 2.5
+      },
+      {
+        "id": "1954d00f-1c6b-4051-bfa9-afa177308e4a",
+        "front": "Qual o valor máximo de microcrédito por cliente dos Operadores?",
+        "back": "Kz 250.000,00 (Duzentos e cinquenta mil Kwanzas).",
+        "difficulty": "easy",
+        "tags": [
+          "microcrédito",
+          "operadores",
+          "limite"
+        ],
+        "source_text": null,
+        "created_at": "2025-11-29 20:12:13.746907",
+        "next_review_date": null,
+        "review_count": 0,
+        "ease_factor": 2.5
+      },
+      {
+        "id": "c417903f-1024-46e6-8505-3a01b770e06b",
+        "front": "Qual a finalidade do microcrédito (SMC e Operadores)?",
+        "back": "Consumo ou desenvolvimento de uma atividade económica.",
+        "difficulty": "easy",
+        "tags": [
+          "microcrédito",
+          "finalidade"
+        ],
+        "source_text": null,
+        "created_at": "2025-11-29 20:12:13.746907",
+        "next_review_date": null,
+        "review_count": 0,
+        "ease_factor": 2.5
+      },
+      {
+        "id": "f56eb8b9-f643-481a-9189-81b4521e56f5",
+        "front": "Quem pode receber microcrédito dos Operadores?",
+        "back": "Todo e qualquer cidadão habilitado a receber o empréstimo.",
+        "difficulty": "easy",
+        "tags": [
+          "microcrédito",
+          "operadores",
+          "beneficiários"
+        ],
+        "source_text": null,
+        "created_at": "2025-11-29 20:12:13.746907",
+        "next_review_date": null,
+        "review_count": 0,
+        "ease_factor": 2.5
+      },
+      {
+        "id": "a798fd0c-8de5-4559-ba87-aa69c9a6cd71",
+        "front": "Quais os serviços que uma SMC pode prestar?",
+        "back": "Concessão de crédito, consultoria aos clientes e concessão de garantias.",
+        "difficulty": "medium",
+        "tags": [
+          "microcrédito",
+          "SMC",
+          "serviços"
+        ],
+        "source_text": null,
+        "created_at": "2025-11-29 20:12:13.746907",
+        "next_review_date": null,
+        "review_count": 0,
+        "ease_factor": 2.5
+      }
+    ],
+    "metadata": {
+      "total_generated": 10,
+      "generation_time": 5.15,
+      "content_length": 3794
+    }
+  },
+  "quiz": {
+    "questions": [
+      {
+        "id": "1a0d48fb-dd69-4e02-9b3f-223eeae9e406",
+        "question": "Qual é o valor mínimo de capital social exigido para a constituição de uma Sociedade de Microcrédito (SMC), de acordo com o texto?",
+        "options": [
+          "Kz 2.500.000,00 (Dois milhões e quinhentos mil Kwanzas)",
+          "Kz 1.000.000,00 (Um milhão de Kwanzas)",
+          "Kz 5.000.000,00 (Cinco milhões de Kwanzas)",
+          "Kz 10.000.000,00 (Dez milhões de Kwanzas)"
+        ],
+        "correct_answer_index": 2,
+        "explanation": "O texto especifica que as Sociedades de Microcrédito devem ter um capital social não inferior a Kz 5.000.000,00 (Cinco milhões de Kwanzas) para serem constituídas.",
+        "concept": "Requisitos para constituição de Sociedade de Microcrédito",
+        "source_text": null
+      },
+      {
+        "id": "029fae63-8837-4ede-b37a-a53a6773e4ae",
+        "question": "Qual das seguintes opções descreve corretamente o tipo de supervisão a que os Operadores de Microcrédito estão sujeitos pelo Banco Nacional de Angola (BNA)?",
+        "options": [
+          "Licenciamento e supervisão contínua.",
+          "Supervisão intensiva e auditorias regulares.",
+          "Registo no BNA e monitoramento para fins estatísticos.",
+          "Nenhuma supervisão, apenas auditorias externas anuais."
+        ],
+        "correct_answer_index": 2,
+        "explanation": "Os Operadores de Microcrédito, por já serem entidades constituídas, estão sujeitos apenas a um registo no BNA e um monitoramento trimestral para fins estatísticos.",
+        "concept": "Supervisão de Operadores de Microcrédito",
+        "source_text": null
+      },
+      {
+        "id": "64ab0b8e-a440-4632-8fbb-ca371536c8a2",
+        "question": "Uma Sociedade de Microcrédito (SMC) pode oferecer quais dos seguintes serviços, de acordo com o documento?",
+        "options": [
+          "Câmbio de moedas estrangeiras e gestão de fundos de investimento.",
+          "Concessão de crédito de grande montante e serviços de consultoria financeira complexa.",
+          "Concessão de crédito de pequeno montante, prestação de serviços de consultoria e concessão de garantias.",
+          "Abertura de contas bancárias e emissão de cartões de crédito."
+        ],
+        "correct_answer_index": 2,
+        "explanation": "O texto indica que uma Sociedade de Microcrédito pode prestar serviços de concessão de crédito de pequeno montante, prestação de serviços de consultoria aos seus clientes e concessão de garantias.",
+        "concept": "Serviços oferecidos por Sociedades de Microcrédito",
+        "source_text": null
+      },
+      {
+        "id": "128b9783-2413-4026-8c1d-594e208de54f",
+        "question": "Qual é o valor máximo que um Operador de Microcrédito pode conceder a um cliente, segundo as informações apresentadas?",
+        "options": [
+          "Kz 500.000,00 (Quinhentos mil Kwanzas)",
+          "Kz 2.500.000,00 (Dois milhões e quinhentos mil Kwanzas)",
+          "Kz 250.000,00 (Duzentos e cinquenta mil Kwanzas)",
+          "Kz 1.000.000,00 (Um milhão de Kwanzas)"
+        ],
+        "correct_answer_index": 2,
+        "explanation": "O texto afirma que os Operadores de Microcrédito podem conceder microcrédito até ao montante máximo de Kz 250.000,00 (Duzentos e cinquenta mil Kwanzas).",
+        "concept": "Limite de crédito para Operadores de Microcrédito",
+        "source_text": null
+      },
+      {
+        "id": "1cde1d1f-e228-4980-87bd-29c4e0418893",
+        "question": "Qual a principal diferença entre Sociedades de Microcrédito (SMC) e Operadores de Microcrédito no que se refere ao seu registro/licenciamento junto ao Banco Nacional de Angola (BNA)?",
+        "options": [
+          "Ambos precisam de licenciamento completo e supervisão.",
+          "Ambos precisam apenas de registro, sem supervisão.",
+          "SMCs precisam de licenciamento, enquanto Operadores precisam apenas de registro.",
+          "Operadores precisam de licenciamento, enquanto SMCs precisam apenas de registro."
+        ],
+        "correct_answer_index": 3,
+        "explanation": "Sociedades de Microcrédito são instituições financeiras não bancárias autorizadas pelo BNA, necessitando de licenciamento. Operadores de Microcrédito, por serem entidades já constituídas, necessitam apenas de um registro no BNA.",
+        "concept": "Diferenças entre SMCs e Operadores de Microcrédito",
+        "source_text": null
+      }
+    ],
+    "metadata": {
+      "total_generated": 5
+    }
+  }
+}
