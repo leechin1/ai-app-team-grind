@@ -40,3 +40,7 @@
 
 ## **8. Análise de Preparação**
 - Feature: "Com base no estudo e resultados obtidos, você está **37% pronto** para o teste."
+
+## **9. Ajustes no código**
+- no generate content implementar temperatura e system prompt
+- verificar se o json parson está igual ao da aula 
