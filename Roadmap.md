@@ -32,9 +32,13 @@
 ## **6 Features de Produtividade**
 - Implementar Pomodoro timer
 - Stats e streaks para incentivar o estudo
+- tool para reconhecer mo chatbot a quanto tempo o user nao estudou 
 - Integração com ML model para análise de progresso
+- O modelo ML é uma tool ou feature ? 
+- criar um quizz com os flashcards onde têm de dar match entre conceito e sua definição
 
 ## **7. Ajustes no código**
 - no generate content implementar temperatura, system prompt, em vês da atual prompt dar diretamento os models como tools
 - verificar se o json parson está igual ao da aula 
 - Dar tools aop gemini como criar math pdfs com LaTex simbols, criar pdfs, ler melhor handwriting, etc
+- Implementar tracing
