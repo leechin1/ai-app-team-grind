@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Testa o DocumentProcessor com diferentes tipos de ficheiros.
 Consolida todos os testes: texto, PDF e imagens.
@@ -32,7 +31,7 @@ def test_text_file():
     A mitocondria possui duas membranas: uma externa lisa e uma interna com
     cristas mitocondriais, onde ocorre a fosforilacao oxidativa.
     """
-
+    
     # Converte para bytes (simula upload de ficheiro)
     file_bytes = test_content.encode('utf-8')
 

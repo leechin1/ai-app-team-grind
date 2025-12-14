@@ -36,13 +36,13 @@ class AIContentGenerator:
         >>> print(f"Gerados {len(response.flashcards)} flashcards")
     """
     
-    def __init__(self, api_key: str, model_name: str = "gemini-2.0-flash"):
+    def __init__(self, api_key: str, model_name: str = "gemini-2.5-flash"):
         """
         Inicializa o gerador.
 
         Args:
             api_key: Gemini API key
-            model_name: Modelo a usar (default: gemini-2.0-flash - rápido e barato)
+            model_name: Modelo a usar (default: gemini-2.5-flash - rápido e barato)
         """
         self.client = genai.Client(api_key=api_key)
         self.model_name = model_name

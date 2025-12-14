@@ -1,5 +1,3 @@
-# scripts/generate_study_materials.py
-
 """
 Script de integração completa: Documento → Flashcards + Quiz
 
