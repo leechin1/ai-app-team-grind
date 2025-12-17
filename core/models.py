@@ -215,12 +215,102 @@ class QuizResult(BaseModel):
     # time where the quizz was completed
     completed_at: datetime = Field(default_factory=datetime.now)
 
-    #  validator to auto-set score 
+    #  validator to auto-set score
     @model_validator(mode='after')
     def calculate_score(self):
         """Auto-calculate score after all fields are set"""
         if self.total_questions > 0:
             self.score = (self.correct_count / self.total_questions) * 100
+        return self
+
+# ---------------------------- Match Quiz (Flashcard Matching) ---------------------------------------------
+
+class MatchPair(BaseModel):
+    """
+    A single pair for matching quiz.
+    User needs to match the prompt (front) with the correct answer (back).
+    """
+
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+
+    # The prompt/term to be matched (flashcard front)
+    prompt: str = Field(..., min_length=1, max_length=500)
+
+    # The correct answer/definition (flashcard back)
+    answer: str = Field(..., min_length=1, max_length=2000)
+
+    # Optional hint
+    hint: Optional[str] = None
+
+    # Tags for categorization
+    tags: List[str] = Field(default_factory=list)
+
+
+class MatchQuizGenerationResponse(BaseModel):
+    """
+    Response containing generated match quiz pairs.
+    """
+
+    # List of match pairs
+    pairs: List[MatchPair]
+
+    # Total pairs generated
+    total_pairs: int
+
+    # Source content length
+    content_length: int
+
+    # Generation time
+    generation_time_seconds: float
+
+
+class MatchQuizAnswer(BaseModel):
+    """
+    User's answer for a match quiz pair.
+    """
+
+    pair_id: str
+
+    # Index of the answer the user matched (from shuffled list)
+    user_matched_index: int
+
+    # Time spent on this match
+    time_spent_seconds: float
+
+    # Timestamp
+    timestamp: datetime = Field(default_factory=datetime.now)
+
+
+class MatchQuizResult(BaseModel):
+    """
+    Result of a match quiz attempt.
+    """
+
+    quiz_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+
+    # Original pairs
+    pairs: List[MatchPair]
+
+    # User answers
+    answers: List[MatchQuizAnswer]
+
+    # Number of correct matches
+    correct_count: int
+
+    # Total pairs
+    total_pairs: int
+
+    # Score (0-100)
+    score: float = 0.0
+
+    # Completion time
+    completed_at: datetime = Field(default_factory=datetime.now)
+
+    @model_validator(mode='after')
+    def calculate_score(self):
+        """Auto-calculate score"""
+        if self.total_pairs > 0:
+            self.score = (self.correct_count / self.total_pairs) * 100
         return self
 
 # ---------------------------- Documents ---------------------------------------------------------------------

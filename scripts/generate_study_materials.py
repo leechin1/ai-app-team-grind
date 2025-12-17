@@ -236,6 +236,50 @@ def generate_quiz(content: str, num_questions: int, api_key: str, difficulty: st
     }
 
 
+def generate_match_quiz(content: str, num_pairs: int, api_key: str, difficulty: str = None) -> dict:
+    """
+    Gera match quiz (pares para matching).
+
+    Returns:
+        dict com pares
+    """
+
+    print_info(f"Número de pares pedidos: {num_pairs}")
+    if difficulty:
+        print_info(f"Dificuldade: {difficulty}")
+
+    # Converte difficulty
+    difficulty_filter = None
+    if difficulty:
+        difficulty_map = {
+            'easy': DifficultyLevel.EASY,
+            'medium': DifficultyLevel.MEDIUM,
+            'hard': DifficultyLevel.HARD
+        }
+        difficulty_filter = difficulty_map.get(difficulty.lower())
+
+    # Gera
+    generator = AIContentGenerator(api_key=api_key)
+
+    print_info("A chamar Gemini API...", indent=1)
+
+    response = generator.generate_match_quiz(
+        content=content,
+        num_pairs=num_pairs,
+        difficulty_filter=difficulty_filter
+    )
+
+    print_success(f"Gerados {len(response.pairs)} pares!")
+
+    return {
+        'pairs': [p.model_dump() for p in response.pairs],
+        'metadata': {
+            'total_generated': len(response.pairs),
+            'generation_time_seconds': response.generation_time_seconds
+        }
+    }
+
+
 def save_results(results: dict, output_dir: Path):
     """
     Guarda resultados em ficheiros JSON.
@@ -315,6 +359,23 @@ def preview_results(results: dict):
         if total > 2:
             print(f"\n   ... e mais {total - 2} questoes")
 
+    # Match Quiz preview
+    if 'match_quiz' in results and results['match_quiz']['pairs']:
+        print("\n\nMATCH QUIZ (primeiros 3 pares):")
+        print("-"*70)
+
+        for i, pair in enumerate(results['match_quiz']['pairs'][:3], 1):
+            print(f"\n{i}. PROMPT: {pair['prompt']}")
+            print(f"   ANSWER: {pair['answer']}")
+            if pair.get('hint'):
+                print(f"   Hint: {pair['hint']}")
+            if pair.get('tags'):
+                print(f"   Tags: {', '.join(pair['tags'])}")
+
+        total = len(results['match_quiz']['pairs'])
+        if total > 3:
+            print(f"\n   ... e mais {total - 3} pares")
+
 
 # ============================================================================
 # MAIN
@@ -390,7 +451,20 @@ Exemplos de uso:
         action='store_true',
         help='Gerar apenas quiz (sem flashcards)'
     )
-    
+
+    parser.add_argument(
+        '--match',
+        type=int,
+        default=5,
+        help='Número de pares para match quiz (default: 5, min: 1, max: 15)'
+    )
+
+    parser.add_argument(
+        '--no-match',
+        action='store_true',
+        help='Não gerar match quiz'
+    )
+
     args = parser.parse_args()
     
     # Validações
@@ -420,7 +494,8 @@ Exemplos de uso:
         'timestamp': datetime.now().isoformat(),
         'input': {},
         'flashcards': None,
-        'quiz': None
+        'quiz': None,
+        'match_quiz': None
     }
     
     try:
@@ -506,12 +581,45 @@ Exemplos de uso:
             )
             
             results['quiz'] = quiz_result
-        
+
         # =================================================================
-        # PASSO 4: Guardar Resultados
+        # PASSO 3.5: Gerar Match Quiz (se não --no-match)
         # =================================================================
-        
-        final_step = 3 if (args.no_quiz or args.no_flashcards) else 4
+
+        if not args.no_match:
+            # Calcula step number dinamicamente
+            step_num = 2
+            if not args.no_flashcards:
+                step_num += 1
+            if not args.no_quiz:
+                step_num += 1
+
+            total_steps = step_num + 1  # +1 para o passo de guardar
+
+            print_step(step_num, total_steps, f"Gerar Match Quiz com {args.match} Pares")
+
+            match_result = generate_match_quiz(
+                content=content,
+                num_pairs=args.match,
+                api_key=api_key,
+                difficulty=args.difficulty
+            )
+
+            results['match_quiz'] = match_result
+
+        # =================================================================
+        # PASSO FINAL: Guardar Resultados
+        # =================================================================
+
+        # Calcula final step dinamicamente
+        final_step = 2
+        if not args.no_flashcards:
+            final_step += 1
+        if not args.no_quiz:
+            final_step += 1
+        if not args.no_match:
+            final_step += 1
+
         print_step(final_step, final_step, "Guardar Resultados")
         
         output_dir = Path(args.output_dir)
@@ -533,6 +641,8 @@ Exemplos de uso:
             print(f"   [OK] Flashcards gerados: {len(results['flashcards']['flashcards'])}")
         if results['quiz']:
             print(f"   [OK] Questoes de quiz: {len(results['quiz']['questions'])}")
+        if results.get('match_quiz'):
+            print(f"   [OK] Pares de match quiz: {len(results['match_quiz']['pairs'])}")
 
         print(f"\nFicheiros guardados em: {output_dir.absolute()}")
         

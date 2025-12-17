@@ -22,7 +22,9 @@ from core.models import (
     FlashcardGenerationRequest,
     FlashcardGenerationResponse,
     QuizQuestion,
-    DifficultyLevel
+    DifficultyLevel,
+    MatchPair,
+    MatchQuizGenerationResponse
 )
 
 
@@ -341,11 +343,151 @@ INSTRUÇÕES CRÍTICAS:
 """
         
         return prompt
-    
+
+    # ========================================================================
+    # MATCH QUIZ GENERATION (Flashcard Matching)
+    # ========================================================================
+
+    def generate_match_quiz(
+        self,
+        content: str,
+        num_pairs: int = 5,
+        difficulty_filter: Optional[DifficultyLevel] = None,
+        focus_topics: Optional[List[str]] = None
+    ) -> MatchQuizGenerationResponse:
+        """
+        Gera match quiz (matching pairs) para o utilizador fazer match.
+
+        Args:
+            content: Texto fonte
+            num_pairs: Quantos pares gerar (1-15)
+            difficulty_filter: Filtro de dificuldade
+            focus_topics: Tópicos específicos
+
+        Returns:
+            MatchQuizGenerationResponse com pares validados
+
+        Raises:
+            ValueError: Se conteúdo muito curto ou geração falhar
+        """
+
+        start_time = time.time()
+
+        # Validação
+        if len(content.strip()) < 50:
+            raise ValueError("Conteúdo muito curto para gerar match quiz")
+
+        if not 1 <= num_pairs <= 15:
+            raise ValueError("num_pairs deve estar entre 1 e 15")
+
+        print(f"Gerando {num_pairs} pares para match quiz...")
+
+        # Constrói prompt
+        prompt = self._build_match_quiz_prompt(
+            content=content,
+            num_pairs=num_pairs,
+            difficulty_filter=difficulty_filter,
+            focus_topics=focus_topics
+        )
+
+        # Cria schema
+        match_schema = TypeAdapter(List[MatchPair]).json_schema()
+
+        # Chama Gemini
+        raw_response = self._call_gemini_with_retry(
+            prompt=prompt,
+            response_schema=match_schema
+        )
+
+        # Parse JSON
+        pairs_data = json.loads(raw_response)
+
+        # Valida e cria MatchPair objects
+        pairs = []
+
+        for i, pair_data in enumerate(pairs_data):
+            try:
+                pair = MatchPair(**pair_data)
+                pairs.append(pair)
+            except Exception as e:
+                print(f"   [AVISO] Par {i+1} invalido: {str(e)[:80]}")
+
+        if len(pairs) == 0:
+            raise ValueError("Nenhum par válido foi gerado")
+
+        generation_time = time.time() - start_time
+
+        print(f"[OK] Gerados {len(pairs)} pares validos em {generation_time:.1f}s")
+
+        return MatchQuizGenerationResponse(
+            pairs=pairs,
+            total_pairs=len(pairs),
+            content_length=len(content),
+            generation_time_seconds=round(generation_time, 2)
+        )
+
+    def _build_match_quiz_prompt(
+        self,
+        content: str,
+        num_pairs: int,
+        difficulty_filter: Optional[DifficultyLevel],
+        focus_topics: Optional[List[str]]
+    ) -> str:
+        """Constrói prompt para gerar match quiz"""
+
+        # Instruções de dificuldade
+        if difficulty_filter:
+            difficulty_instruction = f"\n- Todos os pares: dificuldade {difficulty_filter.value}"
+        else:
+            difficulty_instruction = "\n- Varia a dificuldade de forma equilibrada"
+
+        # Instruções de tópicos
+        topics_instruction = ""
+        if focus_topics:
+            topics_str = ", ".join(focus_topics)
+            topics_instruction = f"\n- Foca nestes tópicos: {topics_str}"
+
+        # Trunca se necessário
+        max_length = 8000
+        if len(content) > max_length:
+            content = content[:max_length] + "\n\n[... truncado ...]"
+
+        prompt = f"""
+Você é um especialista em criar material educacional interativo.
+
+TAREFA: Cria {num_pairs} pares de matching (prompt + answer) baseados no conteúdo.
+
+CONTEÚDO FONTE:
+{content}
+
+INSTRUÇÕES CRÍTICAS:
+- Cada par consiste em:
+  * prompt: Termo, conceito ou pergunta curta (máx 100 caracteres)
+  * answer: Definição, explicação ou resposta (máx 300 caracteres)
+- Os pares devem ser DISTINTOS e NÃO ambíguos
+- Cada prompt deve ter apenas UMA resposta correta óbvia
+- Evita pares que possam ter múltiplas respostas válidas
+- Tags: 1-3 tags relevantes para categorização
+- hint (opcional): Uma dica sutil se o conceito for difícil{difficulty_instruction}{topics_instruction}
+- NÃO inventes informação que não está no conteúdo
+- Varia os tipos: definições, funções, características, relações
+
+EXEMPLOS de bons pares:
+- prompt: "Organela responsável pela produção de energia (ATP)"
+  answer: "Mitocôndria"
+
+- prompt: "Processo de divisão do núcleo celular"
+  answer: "Mitose"
+
+Retorna os pares solicitados.
+"""
+
+        return prompt
+
     # ========================================================================
     # HELPER METHODS
     # ========================================================================
-    
+
     def _call_gemini_with_retry(
         self, 
         prompt: str, 
