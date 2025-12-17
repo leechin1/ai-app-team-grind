@@ -1,4 +1,3 @@
-# core/ai_generator.py
 
 """
 Gerador de conteúdo educacional usando Gemini API.
@@ -16,6 +15,7 @@ import json
 import re
 import time
 from typing import List, Optional
+from pydantic import TypeAdapter
 
 from core.models import (
     FlashCard,
@@ -58,7 +58,7 @@ class AIContentGenerator:
         difficulty_filter: Optional[DifficultyLevel] = None,
         focus_topics: Optional[List[str]] = None,
         source_document_id: Optional[str] = None,
-        source_document_name: Optional[str] = None
+        source_document_name: Optional[str] = None,
     ) -> FlashcardGenerationResponse:
         """
         Gera flashcards a partir de conteúdo educacional.
@@ -99,12 +99,13 @@ class AIContentGenerator:
             difficulty_filter=difficulty_filter,
             focus_topics=focus_topics
         )
-        
+
+        flashcard_schema = TypeAdapter(List[FlashCard]).json_schema()
         # Chama Gemini
-        raw_response = self._call_gemini_with_retry(prompt)
+        raw_response = self._call_gemini_with_retry(prompt= prompt, response_schema=flashcard_schema)
         
         # Parse JSON
-        flashcards_data = self._parse_json_response(raw_response)
+        flashcards_data = json.loads(raw_response)
         
         # Valida e cria Flashcard objects
         flashcards = []
@@ -179,7 +180,7 @@ class AIContentGenerator:
             topics_str = ", ".join(focus_topics)
             topics_instruction = f"\n- Foca especialmente nestes tópicos: {topics_str}"
         
-        # Trunca se muito longo (limite de tokens)
+        # tunca se muito longo (limite de tokens)
         max_content_length = 8000
         if len(content) > max_content_length:
             content = content[:max_content_length] + "\n\n[... conteúdo truncado ...]"
@@ -207,23 +208,8 @@ INSTRUÇÕES IMPORTANTES:
 - NÃO uses perguntas verdadeiro/falso
 - SÊ específico e preciso
 
-FORMATO DE SAÍDA (JSON apenas, sem explicações):
-[
-  {{
-    "front": "O que é a mitocôndria?",
-    "back": "Organela celular responsável pela produção de energia (ATP) através da respiração celular",
-    "difficulty": "easy",
-    "tags": ["biologia", "célula", "organelas"]
-  }},
-  {{
-    "front": "Qual o processo que ocorre nas cristas mitocondriais?",
-    "back": "Fosforilação oxidativa, última etapa da respiração celular que produz a maior parte do ATP",
-    "difficulty": "medium",
-    "tags": ["biologia", "respiração celular"]
-  }}
-]
+Retorna os flascards solicitados
 
-CRÍTICO: Retorna APENAS o array JSON válido. Sem ```json, sem texto extra, sem explicações.
 """
         
         return prompt
@@ -271,12 +257,14 @@ CRÍTICO: Retorna APENAS o array JSON válido. Sem ```json, sem texto extra, sem
             difficulty_filter=difficulty_filter,
             focus_topics=focus_topics
         )
-        
+
+        quizz_schema = TypeAdapter(List[QuizQuestion]).json_schema()
+
         # Chama Gemini
-        raw_response = self._call_gemini_with_retry(prompt)
+        raw_response = self._call_gemini_with_retry(prompt = prompt, response_schema = quizz_schema)
         
         # Parse JSON
-        questions_data = self._parse_json_response(raw_response)
+        questions_data = json.loads(raw_response)
         
         # Valida e cria QuizQuestion objects
         questions = []
@@ -350,28 +338,6 @@ INSTRUÇÕES CRÍTICAS:
 - NÃO inventes informação que não está no conteúdo
 - Opções devem ter tamanho similar (não dar pistas)
 
-FORMATO DE SAÍDA (JSON apenas):
-[
-  {{
-    "question": "Qual a função principal da mitocôndria na célula?",
-    "options": [
-      "Produzir energia através da respiração celular",
-      "Sintetizar proteínas para a célula",
-      "Armazenar material genético",
-      "Regular a entrada e saída de substâncias"
-    ],
-    "correct_answer_index": 0,
-    "explanation": "A mitocôndria é responsável pela produção de ATP (energia) através da respiração celular. Este processo ocorre nas cristas mitocondriais através da fosforilação oxidativa.",
-    "difficulty": "easy",
-    "concept": "Função das organelas celulares"
-  }}
-]
-
-CRÍTICO: 
-- Retorna APENAS o array JSON
-- Cada questão tem EXATAMENTE 4 opções
-- correct_answer_index é 0, 1, 2 ou 3
-- Sem ```json, sem texto extra
 """
         
         return prompt
@@ -383,7 +349,8 @@ CRÍTICO:
     def _call_gemini_with_retry(
         self, 
         prompt: str, 
-        max_retries: int = 3
+        max_retries: int = 3,
+        response_schema: Optional[dict] = None
     ) -> str:
         """
         Chama Gemini com retry logic para falhas temporárias.
@@ -399,7 +366,11 @@ CRÍTICO:
             try:
                 response = self.client.models.generate_content(
                     model=self.model_name,
-                    contents=prompt
+                    contents=prompt,
+                    config= {"response_mime_type" : "application/json",
+                             "response_schema" : response_schema
+                    
+                    }
                 )
 
                 if not response.text:
@@ -414,10 +385,10 @@ CRÍTICO:
                 if attempt < max_retries - 1:
                     # Exponential backoff
                     wait_time = 2 ** attempt
-                    print(f"      Aguardando {wait_time}s...")
+                    print(f"     waiting {wait_time}s...")
                     time.sleep(wait_time)
                 else:
-                    # Última tentativa falhou
+                    # Last attempt failed
                     raise Exception(
                         f"Gemini API falhou após {max_retries} tentativas. "
                         f"Último erro: {error_msg}"

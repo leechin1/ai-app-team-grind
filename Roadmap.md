@@ -1,9 +1,9 @@
 # Roadmap e Funcionalidades do Projeto
 
 ## **Tarefas para dia 15**
-- implementar structured output
-- implementar uma funçao que o user pode escolher o número de flascards e quizzes gerados
-- ML com pythorch ou Tensorflow para cirar um spaced revision scheduled
+- implementar structured output ✅
+- implementar uma funçao que o user pode escolher o número de flascards e quizzes gerados ⏳
+- ML com pythorch ou Tensorflow para cirar um spaced revision scheduled ⏳
 - Rest api
   
 ## **Tarefas para dia 16**
@@ -25,3 +25,6 @@
 - Embedding de documentos para acesso do LLM
 - Criar uma tool para o LLM acessar documentos embedded
 - Speech-to-text feature
+
+Como criar quizzes e flashcards 
+- python scripts/generate_study_materials.py "microcredito_angola.pdf" 

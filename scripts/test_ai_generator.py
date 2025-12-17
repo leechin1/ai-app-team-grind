@@ -1,4 +1,3 @@
-# scripts/test_ai_generator.py
 
 """
 Teste completo do AIContentGenerator (Gemini Integration).
@@ -36,7 +35,7 @@ def print_header(title: str):
 
 def print_section(title: str):
     """Helper para secções"""
-    print(f"\n🧪 {title}")
+    print(f"\n[TESTE] {title}")
     print("-"*70)
 
 
@@ -103,14 +102,14 @@ def test_flashcard_generation():
     
     api_key = os.getenv('GEMINI_API_KEY')
     if not api_key:
-        print("❌ GEMINI_API_KEY não configurada no .env")
+        print("[ERRO] GEMINI_API_KEY não configurada no .env")
         return False
     
     try:
         generator = AIContentGenerator(api_key=api_key)
         
-        print("   📤 Enviando conteúdo para Gemini...")
-        print(f"   📊 Conteúdo: {len(SAMPLE_CONTENT)} caracteres")
+        print("    Enviando conteúdo para Gemini...")
+        print(f"    Conteúdo: {len(SAMPLE_CONTENT)} caracteres")
         
         response = generator.generate_flashcards(
             content=SAMPLE_CONTENT,
@@ -118,19 +117,19 @@ def test_flashcard_generation():
             source_document_name="Biologia - Células"
         )
         
-        print(f"\n✅ Sucesso!")
-        print(f"   📊 Flashcards gerados: {response.total_generated}")
-        print(f"   ⏱️  Tempo de geração: {response.generation_time_seconds}s")
-        print(f"   📏 Tamanho do conteudo: {response.content_length} chars")
+        print(f"\n[OK] Sucesso!")
+        print(f"    Flashcards gerados: {response.total_generated}")
+        print(f"   [TEMPO]  Tempo de geração: {response.generation_time_seconds}s")
+        print(f"    Tamanho do conteudo: {response.content_length} chars")
         
         # Mostra alguns flashcards
-        print(f"\n   📇 Exemplos de flashcards gerados:")
+        print(f"\n    Exemplos de flashcards gerados:")
         for i, card in enumerate(response.flashcards[:3], 1):
             print(f"\n   Card {i} [{card.difficulty.value.upper()}]:")
-            print(f"      ❓ {card.front}")
-            print(f"      ✅ {card.back}")
+            print(f"       {card.front}")
+            print(f"      [OK] {card.back}")
             if card.tags:
-                print(f"      🏷️  {', '.join(card.tags)}")
+                print(f"      [TAGS]  {', '.join(card.tags)}")
         
         if len(response.flashcards) > 3:
             print(f"\n   ... e mais {len(response.flashcards) - 3} cards")
@@ -141,12 +140,12 @@ def test_flashcard_generation():
             flashcards_data = [card.model_dump() for card in response.flashcards]
             json.dump(flashcards_data, f, indent=2, ensure_ascii=False, default=str)
         
-        print(f"\n   💾 Flashcards guardados em: {output_file}")
+        print(f"\n    Flashcards guardados em: {output_file}")
         
         return True
         
     except Exception as e:
-        print(f"❌ Erro: {str(e)}")
+        print(f"[ERRO] Erro: {str(e)}")
         import traceback
         traceback.print_exc()
         return False
@@ -158,33 +157,33 @@ def test_quiz_generation():
     
     api_key = os.getenv('GEMINI_API_KEY')
     if not api_key:
-        print("❌ GEMINI_API_KEY não configurada")
+        print("[ERRO] GEMINI_API_KEY não configurada")
         return False
     
     try:
         generator = AIContentGenerator(api_key=api_key)
         
-        print("   📤 Gerando quiz...")
+        print("    Gerando quiz...")
         
         questions = generator.generate_quiz(
             content=SAMPLE_CONTENT,
             num_questions=5
         )
         
-        print(f"\n✅ Sucesso!")
-        print(f"   📊 Questões geradas: {len(questions)}")
+        print(f"\n[OK] Sucesso!")
+        print(f"    Questões geradas: {len(questions)}")
         
         # Mostra as questões
-        print(f"\n   📝 Questões do quiz:")
+        print(f"\n   [QUIZ] Questões do quiz:")
         for i, q in enumerate(questions, 1):
             print(f"\n   Questão {i}:")
             print(f"      {q.question}")
             print(f"      Opções:")
             for j, opt in enumerate(q.options):
-                marker = "✅" if j == q.correct_answer_index else "  "
+                marker = "[OK]" if j == q.correct_answer_index else "  "
                 print(f"         {marker} {j+1}. {opt}")
-            print(f"      💡 Explicação: {q.explanation}")
-            print(f"      📚 Conceito: {q.concept}")
+            print(f"      [INFO] Explicação: {q.explanation}")
+            print(f"       Conceito: {q.concept}")
         
         # Guarda resultado
         output_file = "generated_quiz.json"
@@ -192,12 +191,12 @@ def test_quiz_generation():
             quiz_data = [q.model_dump() for q in questions]
             json.dump(quiz_data, f, indent=2, ensure_ascii=False, default=str)
         
-        print(f"\n   💾 Quiz guardado em: {output_file}")
+        print(f"\n    Quiz guardado em: {output_file}")
         
         return True
         
     except Exception as e:
-        print(f"❌ Erro: {str(e)}")
+        print(f"[ERRO] Erro: {str(e)}")
         import traceback
         traceback.print_exc()
         return False
@@ -209,13 +208,13 @@ def test_difficulty_filter():
     
     api_key = os.getenv('GEMINI_API_KEY')
     if not api_key:
-        print("❌ Falta API key")
+        print("[ERRO] Falta API key")
         return False
     
     try:
         generator = AIContentGenerator(api_key=api_key)
         
-        print("   📤 Gerando apenas cards EASY...")
+        print("    Gerando apenas cards EASY...")
         
         response = generator.generate_flashcards(
             content=SAMPLE_CONTENT,
@@ -227,22 +226,22 @@ def test_difficulty_filter():
         all_easy = all(card.difficulty == DifficultyLevel.EASY for card in response.flashcards)
         
         if all_easy:
-            print(f"✅ Todos os {len(response.flashcards)} cards são EASY!")
+            print(f"[OK] Todos os {len(response.flashcards)} cards são EASY!")
         else:
             difficulties = [card.difficulty.value for card in response.flashcards]
-            print(f"⚠️  Nem todos são EASY. Distribuição: {difficulties}")
+            print(f"[AVISO]  Nem todos são EASY. Distribuição: {difficulties}")
         
         # Mostra um exemplo
         if response.flashcards:
             card = response.flashcards[0]
             print(f"\n   Exemplo:")
-            print(f"      ❓ {card.front}")
-            print(f"      ✅ {card.back}")
+            print(f"       {card.front}")
+            print(f"      [OK] {card.back}")
         
         return all_easy
         
     except Exception as e:
-        print(f"❌ Erro: {str(e)}")
+        print(f"[ERRO] Erro: {str(e)}")
         return False
 
 
@@ -252,13 +251,13 @@ def test_focus_topics():
     
     api_key = os.getenv('GEMINI_API_KEY')
     if not api_key:
-        print("❌ Falta API key")
+        print("[ERRO] Falta API key")
         return False
     
     try:
         generator = AIContentGenerator(api_key=api_key)
         
-        print("   📤 Gerando cards focados em 'mitocôndria' e 'energia'...")
+        print("    Gerando cards focados em 'mitocôndria' e 'energia'...")
         
         response = generator.generate_flashcards(
             content=SAMPLE_CONTENT,
@@ -266,7 +265,7 @@ def test_focus_topics():
             focus_topics=["mitocôndria", "energia", "ATP"]
         )
         
-        print(f"✅ Gerados {len(response.flashcards)} cards")
+        print(f"[OK] Gerados {len(response.flashcards)} cards")
         
         # Verifica se os tópicos aparecem
         for i, card in enumerate(response.flashcards[:3], 1):
@@ -274,14 +273,14 @@ def test_focus_topics():
                 term in (card.front + card.back).lower() 
                 for term in ["mitocôndria", "mitocondrial", "energia", "atp"]
             )
-            marker = "✅" if mitocondria_mentioned else "⚠️ "
+            marker = "[OK]" if mitocondria_mentioned else "[AVISO] "
             print(f"\n   {marker} Card {i}:")
             print(f"      {card.front}")
         
         return True
         
     except Exception as e:
-        print(f"❌ Erro: {str(e)}")
+        print(f"[ERRO] Erro: {str(e)}")
         return False
 
 
@@ -291,40 +290,40 @@ def test_validations():
     
     api_key = os.getenv('GEMINI_API_KEY')
     if not api_key:
-        print("❌ Falta API key")
+        print("[ERRO] Falta API key")
         return False
     
     generator = AIContentGenerator(api_key=api_key)
     tests_passed = 0
     
     # 5.1: Conteúdo muito curto
-    print("   🔍 5.1 - Conteúdo muito curto (deve rejeitar)")
+    print("   [TESTE] 5.1 - Conteúdo muito curto (deve rejeitar)")
     try:
         generator.generate_flashcards("abc", num_cards=5)
-        print("      ❌ ERRO: Aceitou conteúdo muito curto!")
+        print("      [ERRO] ERRO: Aceitou conteúdo muito curto!")
     except ValueError as e:
-        print(f"      ✅ Validação funcionou: {str(e)[:60]}...")
+        print(f"      [OK] Validação funcionou: {str(e)[:60]}...")
         tests_passed += 1
     
     # 5.2: Número inválido de cards
-    print("\n   🔍 5.2 - Número inválido de cards (deve rejeitar)")
+    print("\n   [TESTE] 5.2 - Número inválido de cards (deve rejeitar)")
     try:
         generator.generate_flashcards(SAMPLE_CONTENT, num_cards=100)
-        print("      ❌ ERRO: Aceitou 100 cards!")
+        print("      [ERRO] ERRO: Aceitou 100 cards!")
     except ValueError as e:
-        print(f"      ✅ Validação funcionou: {str(e)[:60]}...")
+        print(f"      [OK] Validação funcionou: {str(e)[:60]}...")
         tests_passed += 1
     
     # 5.3: Quiz com poucas questões
-    print("\n   🔍 5.3 - Quiz com número inválido (deve rejeitar)")
+    print("\n   [TESTE] 5.3 - Quiz com número inválido (deve rejeitar)")
     try:
         generator.generate_quiz(SAMPLE_CONTENT, num_questions=0)
-        print("      ❌ ERRO: Aceitou 0 questões!")
+        print("      [ERRO] ERRO: Aceitou 0 questões!")
     except ValueError as e:
-        print(f"      ✅ Validação funcionou: {str(e)[:60]}...")
+        print(f"      [OK] Validação funcionou: {str(e)[:60]}...")
         tests_passed += 1
     
-    print(f"\n   📊 Validações: {tests_passed}/3 passaram")
+    print(f"\n    Validações: {tests_passed}/3 passaram")
     return tests_passed == 3
 
 
@@ -340,14 +339,14 @@ def main():
     # Verifica API key
     api_key = os.getenv('GEMINI_API_KEY')
     if not api_key:
-        print("\n❌ ERRO CRÍTICO: GEMINI_API_KEY não configurada!")
-        print("\n💡 Solução:")
+        print("\n[ERRO] ERRO CRÍTICO: GEMINI_API_KEY não configurada!")
+        print("\n[INFO] Solução:")
         print("   1. Cria/edita ficheiro .env na raiz do projeto")
         print("   2. Adiciona: GEMINI_API_KEY=your_actual_key_here")
         print("   3. Obtém key em: https://aistudio.google.com/app/apikey")
         return 1
     
-    print(f"\n✅ API Key configurada: {api_key[:20]}...")
+    print(f"\n[OK] API Key configurada: {api_key[:20]}...")
     
     # Lista de testes
     tests = [
@@ -369,7 +368,7 @@ def main():
             else:
                 results["failed"] += 1
         except Exception as e:
-            print(f"\n❌ Teste '{test_name}' crashou: {str(e)}")
+            print(f"\n[ERRO] Teste '{test_name}' crashou: {str(e)}")
             results["failed"] += 1
             import traceback
             traceback.print_exc()
@@ -378,22 +377,22 @@ def main():
     print_header("RESUMO")
     
     total = results["passed"] + results["failed"]
-    print(f"\n📊 Resultados:")
-    print(f"   ✅ Passaram:  {results['passed']}/{total}")
-    print(f"   ❌ Falharam:  {results['failed']}/{total}")
+    print(f"\n Resultados:")
+    print(f"   [OK] Passaram:  {results['passed']}/{total}")
+    print(f"   [ERRO] Falharam:  {results['failed']}/{total}")
     
     if results["failed"] == 0:
-        print(f"\n🎉 TODOS OS TESTES PASSARAM!")
-        print(f"\n💡 Ficheiros gerados:")
+        print(f"\n TODOS OS TESTES PASSARAM!")
+        print(f"\n[INFO] Ficheiros gerados:")
         print(f"   - generated_flashcards.json")
         print(f"   - generated_quiz.json")
-        print(f"\n📚 Próximos passos:")
+        print(f"\n Próximos passos:")
         print(f"   1. Verifica os ficheiros JSON gerados")
         print(f"   2. Testa com teu próprio conteúdo")
         print(f"   3. Integra com Document Processor")
         print(f"   4. Prepara para API (FastAPI)")
     else:
-        print(f"\n⚠️  Alguns testes falharam. Verifica os erros acima.")
+        print(f"\n[AVISO]  Alguns testes falharam. Verifica os erros acima.")
     
     print("\n" + "="*70)
     
