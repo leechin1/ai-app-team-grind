@@ -65,6 +65,10 @@ class FlashCard(BaseModel):
     # source
     source_text : Optional[str] = None
 
+    # Source document tracking (for filtering by document)
+    source_document_id: Optional[str] = None
+    source_document_name: Optional[str] = None
+
     # date where the flashcard was generated
     created_at: datetime = Field(default_factory= datetime.now)
 
@@ -160,6 +164,10 @@ class QuizQuestion(BaseModel):
     # orignal source text
     source_text : Optional[str] = None
 
+    # Source document tracking
+    source_document_id: Optional[str] = None
+    source_document_name: Optional[str] = None
+
     # validator
     @validator('correct_answer_index')
     def validate_correct_index(cls, v, values):
@@ -253,6 +261,10 @@ class MatchPair(BaseModel):
 
     # Tags for categorization
     tags: List[str] = Field(default_factory=list)
+
+    # Source document tracking
+    source_document_id: Optional[str] = None
+    source_document_name: Optional[str] = None
 
 
 class MatchQuizGenerationResponse(BaseModel):
