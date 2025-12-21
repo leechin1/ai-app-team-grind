@@ -19,10 +19,10 @@ import os
 from pathlib import Path
 
 # Import core modules
-from core.ai_generator import AIGenerator
+from core.ai_generator import AIContentGenerator
 from core.models import (
     FlashCard, FlashcardGenerationRequest, FlashcardGenerationResponse,
-    QuizQuestion, QuizGenerationRequest, QuizGenerationResponse, QuizAnswer, QuizResult,
+    QuizQuestion, QuizAnswer, QuizResult,
     MatchPair, MatchQuizGenerationResponse, MatchQuizAnswer, MatchQuizResult,
     ResponseQuality, DifficultyLevel
 )
@@ -61,6 +61,8 @@ class AppState:
     """Global application state (in-memory for now)"""
     def __init__(self):
         self.flashcards: dict[str, FlashCard] = {}  # flashcard_id -> FlashCard
+        self.active_quizzes: dict[str, List[QuizQuestion]] = {}  # quiz_id -> questions
+        self.active_match_quizzes: dict[str, List[MatchPair]] = {}  # match_quiz_id -> pairs
         self.sm2 = SM2SpacedRepetition()
         self.logger = UnifiedReviewLogger()
         self.api_key = os.getenv("GEMINI_API_KEY")
@@ -100,6 +102,12 @@ class SubmitQuizRequest(BaseModel):
     answers: List[QuizAnswer]
 
 
+class QuizGenerationResponse(BaseModel):
+    """Response from quiz generation"""
+    quiz_id: str
+    questions: List[QuizQuestion]
+
+
 class GenerateMatchQuizRequest(BaseModel):
     """Request to generate a match quiz"""
     content: str
@@ -132,7 +140,7 @@ async def generate_flashcards(request: GenerateFlashcardsRequest):
         difficulty = DifficultyLevel(request.difficulty) if request.difficulty else None
 
         # Initialize AI generator
-        generator = AIGenerator(api_key=state.api_key)
+        generator = AIContentGenerator(api_key=state.api_key)
 
         # Generate flashcards
         response = generator.generate_flashcards(
@@ -248,17 +256,24 @@ async def generate_quiz(request: GenerateQuizRequest):
         difficulty = DifficultyLevel(request.difficulty) if request.difficulty else None
 
         # Initialize AI generator
-        generator = AIGenerator(api_key=state.api_key)
+        generator = AIContentGenerator(api_key=state.api_key)
 
-        # Generate quiz
-        response = generator.generate_quiz(
+        # Generate quiz questions
+        questions = generator.generate_quiz(
             content=request.content,
             num_questions=request.num_questions,
             difficulty_filter=difficulty,
             focus_topics=request.focus_topics
         )
 
-        return response
+        # Generate unique quiz ID
+        import uuid
+        quiz_id = str(uuid.uuid4())
+
+        # Store quiz in state for later submission validation
+        state.active_quizzes[quiz_id] = questions
+
+        return QuizGenerationResponse(quiz_id=quiz_id, questions=questions)
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to generate quiz: {str(e)}")
@@ -319,7 +334,7 @@ async def generate_match_quiz(request: GenerateMatchQuizRequest):
         difficulty = DifficultyLevel(request.difficulty) if request.difficulty else None
 
         # Initialize AI generator
-        generator = AIGenerator(api_key=state.api_key)
+        generator = AIContentGenerator(api_key=state.api_key)
 
         # Generate match quiz
         response = generator.generate_match_quiz(

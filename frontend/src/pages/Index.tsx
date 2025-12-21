@@ -118,6 +118,10 @@ export default function Index() {
               <span className="text-xl font-bold text-foreground">Notiq</span>
             </div>
             <div className="flex items-center gap-2">
+              <Button variant="default" onClick={() => navigate('/study')}>
+                <BookOpen className="w-4 h-4 mr-2" />
+                Study Hub
+              </Button>
               <Button variant="ghost" size="icon">
                 <Settings className="w-5 h-5" />
               </Button>
