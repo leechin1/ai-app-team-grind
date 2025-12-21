@@ -2,12 +2,17 @@
 __pycache__/
 *.pyc
 *.pyo
+*.pyd
 
 # Virtual environment
 notiq_env/
 .venv/
+venv/
+env/
+
 # Environment variables
 .env
+.env.local
 
 # VS Code settings
 .vscode/
@@ -16,11 +21,35 @@ notiq_env/
 .DS_Store
 Thumbs.db
 
+# Test/sample files
 *.pdf
 *.docx
 *.jpg
+*.jpeg
 *.png
+extracted_*.txt
 
+# Output files
+output/
 output_*.json
+study_materials_*.json
+
+# Testing
 .pytest_cache/
+.coverage
+htmlcov/
+
+# Notebooks
 .ipynb_checkpoints/
+*.ipynb
+
+# ML Models (will be large)
+models/*.pth
+models/*.pkl
+
+# Data logs (keep structure, ignore logs)
+data/*.jsonl
+data/uploads/
+
+# Claude temp files
+.claude/

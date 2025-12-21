@@ -1,0 +1,154 @@
+[
+  {
+    "id": "euca-card-01",
+    "front": "Qual a principal característica que diferencia uma célula eucariótica de uma procariótica?",
+    "back": "A célula eucariótica possui um núcleo definido e delimitado por membrana nuclear, além de organelas membranosas, ao contrário das procarióticas.",
+    "difficulty": "easy",
+    "tags": [
+      "biologia",
+      "célula",
+      "eucariota"
+    ],
+    "source_text": "A Célula Eucariota",
+    "created_at": "2023-10-27 10:00:00+00:00",
+    "interval": 0,
+    "repetitions": 0,
+    "ease_factor": 2.5,
+    "last_reviewed_at": null,
+    "next_review_date": null,
+    "review_count": 0
+  },
+  {
+    "id": "euca-card-02",
+    "front": "O que o núcleo da célula eucariótica contém e qual sua função principal?",
+    "back": "O núcleo contém o DNA organizado em cromossomas, controlando todas as atividades celulares e sendo o local de síntese de RNA.",
+    "difficulty": "easy",
+    "tags": [
+      "biologia",
+      "núcleo",
+      "organelas"
+    ],
+    "source_text": "A Célula Eucariota",
+    "created_at": "2023-10-27 10:00:00+00:00",
+    "interval": 0,
+    "repetitions": 0,
+    "ease_factor": 2.5,
+    "last_reviewed_at": null,
+    "next_review_date": null,
+    "review_count": 0
+  },
+  {
+    "id": "euca-card-03",
+    "front": "Qual a principal função da mitocôndria e qual a sua peculiaridade genética?",
+    "back": "A mitocôndria é responsável pela produção de energia (ATP) através da respiração celular. Possui DNA próprio com herança materna, o que sustenta a teoria endossimbiótica.",
+    "difficulty": "medium",
+    "tags": [
+      "biologia",
+      "mitocôndria",
+      "energia"
+    ],
+    "source_text": "A Célula Eucariota",
+    "created_at": "2023-10-27 10:00:00+00:00",
+    "interval": 0,
+    "repetitions": 0,
+    "ease_factor": 2.5,
+    "last_reviewed_at": null,
+    "next_review_date": null,
+    "review_count": 0
+  },
+  {
+    "id": "euca-card-04",
+    "front": "Quais são as funções distintas do Retículo Endoplasmático Rugoso e do Liso?",
+    "back": "O RE Rugoso (com ribossomas) sintetiza proteínas, enquanto o RE Liso sintetiza lípidos e está envolvido no metabolismo celular.",
+    "difficulty": "medium",
+    "tags": [
+      "biologia",
+      "retículo",
+      "organelas"
+    ],
+    "source_text": "A Célula Eucariota",
+    "created_at": "2023-10-27 10:00:00+00:00",
+    "interval": 0,
+    "repetitions": 0,
+    "ease_factor": 2.5,
+    "last_reviewed_at": null,
+    "next_review_date": null,
+    "review_count": 0
+  },
+  {
+    "id": "euca-card-05",
+    "front": "Descreva a função do Complexo de Golgi na célula eucariótica.",
+    "back": "O Complexo de Golgi é responsável por modificar, empacotar e distribuir proteínas e lípidos sintetizados, formando vesículas de secreção para diversas partes da célula ou para fora dela.",
+    "difficulty": "easy",
+    "tags": [
+      "biologia",
+      "golgi",
+      "proteínas"
+    ],
+    "source_text": "A Célula Eucariota",
+    "created_at": "2023-10-27 10:00:00+00:00",
+    "interval": 0,
+    "repetitions": 0,
+    "ease_factor": 2.5,
+    "last_reviewed_at": null,
+    "next_review_date": null,
+    "review_count": 0
+  },
+  {
+    "id": "euca-card-06",
+    "front": "Qual a principal função dos lisossomas e o que eles contêm internamente?",
+    "back": "Os lisossomas realizam a digestão intracelular, contendo enzimas digestivas. Seu ambiente interno é caracteristicamente ácido para otimizar a atividade dessas enzimas.",
+    "difficulty": "easy",
+    "tags": [
+      "biologia",
+      "lisossomas",
+      "digestão"
+    ],
+    "source_text": "A Célula Eucariota",
+    "created_at": "2023-10-27 10:00:00+00:00",
+    "interval": 0,
+    "repetitions": 0,
+    "ease_factor": 2.5,
+    "last_reviewed_at": null,
+    "next_review_date": null,
+    "review_count": 0
+  },
+  {
+    "id": "euca-card-07",
+    "front": "Qual a função exclusiva dos cloroplastos e em que tipo de célula eucariótica são encontrados?",
+    "back": "Os cloroplastos são organelas presentes em células vegetais, responsáveis pela fotossíntese, processo que converte a luz em energia química usando clorofila.",
+    "difficulty": "medium",
+    "tags": [
+      "biologia",
+      "cloroplastos",
+      "vegetal"
+    ],
+    "source_text": "A Célula Eucariota",
+    "created_at": "2023-10-27 10:00:00+00:00",
+    "interval": 0,
+    "repetitions": 0,
+    "ease_factor": 2.5,
+    "last_reviewed_at": null,
+    "next_review_date": null,
+    "review_count": 0
+  },
+  {
+    "id": "euca-card-08",
+    "front": "Cite três diferenças chave entre células eucarióticas e procarióticas.",
+    "back": "Células eucarióticas têm núcleo definido, organelas membranosas e são maiores/mais complexas. Células procarióticas não têm núcleo definido, não possuem organelas membranosas e são menores/mais simples.",
+    "difficulty": "hard",
+    "tags": [
+      "biologia",
+      "comparação",
+      "célula"
+    ],
+    "source_text": "A Célula Eucariota",
+    "created_at": "2023-10-27 10:00:00+00:00",
+    "interval": 0,
+    "repetitions": 0,
+    "ease_factor": 2.5,
+    "last_reviewed_at": null,
+    "next_review_date": null,
+    "review_count": 0
+  }
+]
