@@ -121,13 +121,12 @@ export default function StudyHub() {
             <Card>
               <CardHeader className="pb-2">
                 <CardDescription>Accuracy</CardDescription>
-                <CardTitle className="text-3xl">{Math.round(statsData.overall_accuracy * 100)}%</CardTitle>
+                <CardTitle className="text-3xl">{Math.round(statsData.overall_accuracy)}%</CardTitle>
               </CardHeader>
               <CardContent>
-                <Progress value={statsData.overall_accuracy * 100} className="h-2" />
+                <Progress value={statsData.overall_accuracy} className="h-2" />
               </CardContent>
             </Card>
-
             <Card>
               <CardHeader className="pb-2">
                 <CardDescription>Due for Review</CardDescription>
