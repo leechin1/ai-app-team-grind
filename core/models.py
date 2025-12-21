@@ -68,16 +68,25 @@ class FlashCard(BaseModel):
     # date where the flashcard was generated
     created_at: datetime = Field(default_factory= datetime.now)
 
-    # spaced repetion scheduled (to be developed)
+    # ========== SM-2 Spaced Repetition Fields ==========
 
+    # Interval in days until next review
+    interval: int = 0
 
-    # next revision 
-    next_review_date : Optional[datetime] = None
+    # Number of consecutive correct reviews
+    repetitions: int = 0
 
-    #results
-    review_count : int = 0
+    # Ease factor (difficulty multiplier, typically 1.3 to 2.5)
+    ease_factor: float = 2.5
 
-    ease_factor : float = 2.5
+    # When was this card last reviewed
+    last_reviewed_at: Optional[datetime] = None
+
+    # Next scheduled review date
+    next_review_date: Optional[datetime] = None
+
+    # Total number of times this card has been reviewed
+    review_count: int = 0
 
 class FlashcardGenerationRequest(BaseModel) : 
     """ 
@@ -357,6 +366,65 @@ class ProcessedDocument(BaseModel):
     
     # preview (using gemini mistral maybe to save tokens)
     preview: str
+
+# ---------------------------------- Spaced Repetition (SM-2 Algorithm) ----------------------------------------
+
+class ResponseQuality(int, Enum):
+    """
+    User's response quality on SM-2 scale (0-5).
+
+    Used to determine how well the user remembered the flashcard.
+    Higher values = better retention = longer intervals.
+    """
+    COMPLETE_BLACKOUT = 0      # Complete memory failure
+    INCORRECT_EASY_RECALL = 1  # Incorrect but felt familiar
+    INCORRECT_HARD_RECALL = 2  # Incorrect after hard thinking
+    CORRECT_HARD_RECALL = 3    # Correct but difficult
+    CORRECT_HESITATION = 4     # Correct with some hesitation
+    PERFECT_RECALL = 5         # Perfect, immediate recall
+
+
+class ReviewInteraction(BaseModel):
+    """
+    Records a single interaction with study material.
+
+    Supports multi-source data collection:
+    - flashcard_review: Self-reported (LOW confidence 0.3)
+    - quiz_attempt: Verified correct/incorrect (HIGH confidence 0.9)
+    - match_attempt: Verified matching (HIGH confidence 0.85)
+    """
+
+    # Unique ID for this interaction
+    interaction_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+
+    # Which flashcard was reviewed (or related via tags)
+    flashcard_id: str
+
+    # Type of interaction
+    interaction_type: Literal["flashcard_review", "quiz_attempt", "match_attempt"]
+
+    # User's response quality (0-5 SM-2 scale)
+    user_response_quality: int = Field(..., ge=0, le=5)
+
+    # Was the response correct?
+    was_correct: bool
+
+    # Time spent on this interaction (seconds)
+    time_spent_seconds: float
+
+    # Tags for linking across sources
+    tags: List[str] = Field(default_factory=list)
+
+    # Confidence weight for ML training
+    # quiz/match = 0.9/0.85 (verified), flashcard = 0.3 (self-reported)
+    confidence_weight: float = Field(default=0.3, ge=0.0, le=1.0)
+
+    # When this interaction happened
+    timestamp: datetime = Field(default_factory=datetime.now)
+
+    # Optional: related quiz/match question ID
+    related_question_id: Optional[str] = None
+
 
 # ---------------------------------- Spaced Revison Scheduled ----------------------------------------
 
