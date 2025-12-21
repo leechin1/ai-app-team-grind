@@ -120,13 +120,50 @@
   .glass {
     @apply bg-card/80 backdrop-blur-sm;
   }
-  
+
   .gradient-primary {
     background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(250 84% 65%) 100%);
   }
-  
+
   .text-gradient {
     @apply bg-clip-text text-transparent;
     background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(250 84% 70%) 100%);
+  }
+
+  /* 3D Flip Animation for Flashcards */
+  .perspective-1000 {
+    perspective: 1000px;
+  }
+
+  .transform-style-3d {
+    transform-style: preserve-3d;
+  }
+
+  .backface-hidden {
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+  }
+
+  .rotate-y-180 {
+    transform: rotateY(180deg);
+  }
+
+  /* Smooth transition for card flip */
+  .flashcard-flip-transition {
+    transition: transform 0.7s cubic-bezier(0.4, 0.0, 0.2, 1);
+    transform-style: preserve-3d;
+  }
+
+  /* Ensure both sides of card are positioned correctly */
+  .flashcard-side {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+  }
+
+  .flashcard-back {
+    transform: rotateY(180deg);
   }
 }

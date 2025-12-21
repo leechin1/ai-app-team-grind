@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import {
   Brain, ArrowLeft, Play, Plus, RotateCw, Check, X,
   Clock, Flame, Target
@@ -20,6 +20,7 @@ type ViewMode = 'menu' | 'generate' | 'review';
 
 export default function Flashcards() {
   const navigate = useNavigate();
+  const location = useLocation();
   const queryClient = useQueryClient();
   const [viewMode, setViewMode] = useState<ViewMode>('menu');
 
@@ -27,6 +28,16 @@ export default function Flashcards() {
   const [content, setContent] = useState('');
   const [numCards, setNumCards] = useState(10);
   const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium');
+
+  // Check if content was passed from Upload page
+  useEffect(() => {
+    const uploadedContent = (location.state as any)?.content;
+    if (uploadedContent) {
+      setContent(uploadedContent);
+      setViewMode('generate');
+      toast.info('PDF content loaded! Ready to generate flashcards.');
+    }
+  }, [location.state]);
 
   // Review state
   const [currentCardIndex, setCurrentCardIndex] = useState(0);
@@ -120,6 +131,20 @@ export default function Flashcards() {
       case 'hard': return 'bg-red-500/20 text-red-700 dark:text-red-400';
       default: return 'bg-gray-500/20 text-gray-700 dark:text-gray-400';
     }
+  };
+
+  const getNextReviewDate = (card: FlashCard) => {
+    if (!card.next_review_date) return null;
+    
+    const nextDate = new Date(card.next_review_date);
+    const now = new Date();
+    const diffTime = nextDate.getTime() - now.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays < 0) return "Review now";
+    if (diffDays === 0) return "Review today";
+    if (diffDays === 1) return "Review tomorrow";
+    return `Review in ${diffDays} days`;
   };
 
   return (
@@ -298,82 +323,152 @@ export default function Flashcards() {
               <>
                 <Progress value={(currentCardIndex / dueCards.length) * 100} className="h-2" />
 
-                <Card
-                  className="cursor-pointer min-h-[400px] flex items-center justify-center"
+                <div 
+                  className="perspective-1000 cursor-pointer min-h-[400px]"
                   onClick={() => setIsFlipped(!isFlipped)}
                 >
-                  <CardContent className="text-center py-12 px-8">
-                    <div className="mb-4">
-                      <Badge className={getDifficultyColor(currentCard.difficulty)}>
-                        {currentCard.difficulty}
-                      </Badge>
-                    </div>
+                  <div 
+                    className={`relative w-full h-[400px] transition-transform duration-700 transform-style-3d ${
+                      isFlipped ? 'rotate-y-180' : ''
+                    }`}
+                    style={{
+                      transformStyle: 'preserve-3d',
+                      transition: 'transform 0.7s cubic-bezier(0.4, 0.0, 0.2, 1)',
+                      transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)',
+                    }}
+                  >
+                    {/* Front of card */}
+                    <Card 
+                      className={`absolute w-full h-full backface-hidden ${
+                        isFlipped ? 'pointer-events-none' : ''
+                      }`}
+                      style={{ backfaceVisibility: 'hidden' }}
+                    >
+                      <CardContent className="text-center py-12 px-8 h-full flex flex-col justify-center">
+                        <div className="mb-4">
+                          <Badge className={getDifficultyColor(currentCard.difficulty)}>
+                            {currentCard.difficulty}
+                          </Badge>
+                        </div>
 
-                    <div className="text-2xl font-medium mb-4">
-                      {isFlipped ? currentCard.back : currentCard.front}
-                    </div>
+                        <div className="text-2xl font-medium mb-4">
+                          {currentCard.front}
+                        </div>
 
-                    <p className="text-sm text-muted-foreground">
-                      {isFlipped ? 'Click to see question' : 'Click to reveal answer'}
-                    </p>
+                        <p className="text-sm text-muted-foreground">
+                          Click to reveal answer
+                        </p>
 
-                    {currentCard.tags && currentCard.tags.length > 0 && (
-                      <div className="flex flex-wrap gap-2 justify-center mt-6">
-                        {currentCard.tags.map((tag, i) => (
-                          <Badge key={i} variant="outline">{tag}</Badge>
-                        ))}
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
+                        {currentCard.tags && currentCard.tags.length > 0 && (
+                          <div className="flex flex-wrap gap-2 justify-center mt-6">
+                            {currentCard.tags.map((tag, i) => (
+                              <Badge key={i} variant="outline">{tag}</Badge>
+                            ))}
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+
+                    {/* Back of card */}
+                    <Card 
+                      className={`absolute w-full h-full backface-hidden ${
+                        !isFlipped ? 'pointer-events-none' : ''
+                      }`}
+                      style={{ 
+                        backfaceVisibility: 'hidden',
+                        transform: 'rotateY(180deg)'
+                      }}
+                    >
+                      <CardContent className="text-center py-12 px-8 h-full flex flex-col justify-center bg-primary/5">
+                        <div className="mb-4">
+                          <Badge className={getDifficultyColor(currentCard.difficulty)}>
+                            {currentCard.difficulty}
+                          </Badge>
+                        </div>
+
+                        <div className="text-2xl font-medium mb-4">
+                          {currentCard.back}
+                        </div>
+
+                        <p className="text-sm text-muted-foreground">
+                          Click to see question
+                        </p>
+
+                        {currentCard.tags && currentCard.tags.length > 0 && (
+                          <div className="flex flex-wrap gap-2 justify-center mt-6">
+                            {currentCard.tags.map((tag, i) => (
+                              <Badge key={i} variant="outline">{tag}</Badge>
+                            ))}
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </div>
+                </div>
 
                 {isFlipped && (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>How well did you know this?</CardTitle>
-                      <CardDescription>Your answer affects the next review date</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="grid grid-cols-2 gap-3">
-                        <Button
-                          variant="outline"
-                          className="h-20 flex flex-col gap-2"
-                          onClick={() => handleReviewResponse(1, false)}
-                          disabled={reviewMutation.isPending}
-                        >
-                          <X className="w-6 h-6 text-red-500" />
-                          <span>Didn't Know</span>
-                        </Button>
-                        <Button
-                          variant="outline"
-                          className="h-20 flex flex-col gap-2"
-                          onClick={() => handleReviewResponse(3, true)}
-                          disabled={reviewMutation.isPending}
-                        >
-                          <Check className="w-6 h-6 text-yellow-500" />
-                          <span>Somewhat</span>
-                        </Button>
-                        <Button
-                          variant="outline"
-                          className="h-20 flex flex-col gap-2"
-                          onClick={() => handleReviewResponse(4, true)}
-                          disabled={reviewMutation.isPending}
-                        >
-                          <Check className="w-6 h-6 text-green-500" />
-                          <span>Knew It</span>
-                        </Button>
-                        <Button
-                          variant="outline"
-                          className="h-20 flex flex-col gap-2"
-                          onClick={() => handleReviewResponse(5, true)}
-                          disabled={reviewMutation.isPending}
-                        >
-                          <Target className="w-6 h-6 text-primary" />
-                          <span>Easy!</span>
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
+                  <>
+                    {/* Next Review Info */}
+                    {currentCard.next_review_date && (
+                      <Card className="bg-blue-500/10 border-blue-500/50">
+                        <CardContent className="py-4 text-center">
+                          <div className="flex items-center justify-center gap-2">
+                            <Clock className="w-4 h-4 text-blue-500" />
+                            <span className="text-sm font-medium text-blue-700 dark:text-blue-400">
+                              {getNextReviewDate(currentCard)}
+                            </span>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
+
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>How well did you know this?</CardTitle>
+                        <CardDescription>Your answer affects the next review date</CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="grid grid-cols-2 gap-3">
+                          <Button
+                            variant="outline"
+                            className="h-20 flex flex-col gap-2"
+                            onClick={() => handleReviewResponse(1, false)}
+                            disabled={reviewMutation.isPending}
+                          >
+                            <X className="w-6 h-6 text-red-500" />
+                            <span>Didn't Know</span>
+                          </Button>
+                          <Button
+                            variant="outline"
+                            className="h-20 flex flex-col gap-2"
+                            onClick={() => handleReviewResponse(3, true)}
+                            disabled={reviewMutation.isPending}
+                          >
+                            <Check className="w-6 h-6 text-yellow-500" />
+                            <span>Somewhat</span>
+                          </Button>
+                          <Button
+                            variant="outline"
+                            className="h-20 flex flex-col gap-2"
+                            onClick={() => handleReviewResponse(4, true)}
+                            disabled={reviewMutation.isPending}
+                          >
+                            <Check className="w-6 h-6 text-green-500" />
+                            <span>Knew It</span>
+                          </Button>
+                          <Button
+                            variant="outline"
+                            className="h-20 flex flex-col gap-2"
+                            onClick={() => handleReviewResponse(5, true)}
+                            disabled={reviewMutation.isPending}
+                          >
+                            <Target className="w-6 h-6 text-primary" />
+                            <span>Easy!</span>
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </>
                 )}
               </>
             ) : null}

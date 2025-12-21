@@ -16,6 +16,7 @@ from pydantic import BaseModel
 from typing import List, Optional
 from datetime import datetime
 import os
+import uuid
 from pathlib import Path
 
 # Import core modules
@@ -45,8 +46,10 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:3000",  # React dev server
         "http://localhost:5173",  # Vite dev server
+        "http://localhost:8080",  # Vite dev server (alternative port)
         "http://127.0.0.1:3000",
         "http://127.0.0.1:5173",
+        "http://127.0.0.1:8080",
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -63,6 +66,7 @@ class AppState:
         self.flashcards: dict[str, FlashCard] = {}  # flashcard_id -> FlashCard
         self.active_quizzes: dict[str, List[QuizQuestion]] = {}  # quiz_id -> questions
         self.active_match_quizzes: dict[str, List[MatchPair]] = {}  # match_quiz_id -> pairs
+        self.uploaded_documents: dict[str, dict] = {}  # doc_id -> {filename, content, uploaded_at}
         self.sm2 = SM2SpacedRepetition()
         self.logger = UnifiedReviewLogger()
         self.api_key = os.getenv("GEMINI_API_KEY")
@@ -71,14 +75,6 @@ state = AppState()
 
 
 # ==================== Request/Response Models ====================
-
-class GenerateFlashcardsRequest(BaseModel):
-    """Request to generate flashcards"""
-    content: str
-    num_flashcards: int = 10
-    difficulty: Optional[str] = "medium"
-    focus_topics: Optional[List[str]] = None
-
 
 class ReviewFlashcardRequest(BaseModel):
     """Request to review a flashcard"""
@@ -122,10 +118,24 @@ class SubmitMatchQuizRequest(BaseModel):
     answers: List[MatchQuizAnswer]
 
 
-# ==================== Flashcard Endpoints ====================
+class StructureNoteRequest(BaseModel):
+    """Request to structure a note with AI"""
+    note_id: str
+    content: str
+
+
+class ChatRequest(BaseModel):
+    """Request to chat with AI"""
+    message: str
+    context: Optional[str] = None
+    source_id: Optional[str] = None
+    file_uri: Optional[str] = None
+
+
+# ==================== Flashcard Endpoints ===================="
 
 @app.post("/api/flashcards/generate", response_model=FlashcardGenerationResponse)
-async def generate_flashcards(request: GenerateFlashcardsRequest):
+async def generate_flashcards(request: FlashcardGenerationRequest):
     """
     Generate flashcards from text content.
 
@@ -136,8 +146,14 @@ async def generate_flashcards(request: GenerateFlashcardsRequest):
         FlashcardGenerationResponse with generated flashcards
     """
     try:
+        if not state.api_key:
+            raise HTTPException(
+                status_code=500,
+                detail="Gemini API key not configured. Set GEMINI_API_KEY environment variable."
+            )
+
         # Convert difficulty string to enum
-        difficulty = DifficultyLevel(request.difficulty) if request.difficulty else None
+        difficulty = DifficultyLevel(request.difficulty_filter) if request.difficulty_filter else None
 
         # Initialize AI generator
         generator = AIContentGenerator(api_key=state.api_key)
@@ -145,9 +161,9 @@ async def generate_flashcards(request: GenerateFlashcardsRequest):
         # Generate flashcards
         response = generator.generate_flashcards(
             content=request.content,
-            num_flashcards=request.num_flashcards,
+            num_cards=request.num_cards,
             difficulty_filter=difficulty,
-            focus_topics=request.focus_topics
+            focus_topics=None  # focus_topics not in FlashcardGenerationRequest model
         )
 
         # Store flashcards in memory
@@ -321,31 +337,91 @@ async def submit_quiz(request: SubmitQuizRequest):
 @app.post("/api/match/generate", response_model=MatchQuizGenerationResponse)
 async def generate_match_quiz(request: GenerateMatchQuizRequest):
     """
-    Generate a match quiz from text content.
+    Generate a match quiz from stored flashcards or text content.
 
     Args:
-        request: Content and generation parameters
+        request: Generation parameters (if content is empty, uses existing flashcards)
 
     Returns:
         MatchQuizGenerationResponse with match pairs
     """
     try:
-        # Convert difficulty string to enum
-        difficulty = DifficultyLevel(request.difficulty) if request.difficulty else None
+        # Check if user wants to use existing flashcards or generate from content
+        if request.content and request.content.strip():
+            # Generate new match pairs from content using AI
+            if not state.api_key:
+                raise HTTPException(
+                    status_code=500,
+                    detail="Gemini API key not configured. Set GEMINI_API_KEY environment variable."
+                )
 
-        # Initialize AI generator
-        generator = AIContentGenerator(api_key=state.api_key)
+            difficulty = DifficultyLevel(request.difficulty) if request.difficulty else None
+            generator = AIContentGenerator(api_key=state.api_key)
 
-        # Generate match quiz
-        response = generator.generate_match_quiz(
-            content=request.content,
-            num_pairs=request.num_pairs,
-            difficulty_filter=difficulty,
-            focus_topics=request.focus_topics
-        )
+            response = generator.generate_match_quiz(
+                content=request.content,
+                num_pairs=request.num_pairs,
+                difficulty_filter=difficulty,
+                focus_topics=request.focus_topics
+            )
 
-        return response
+            # Store match quiz
+            quiz_id = str(uuid.uuid4())
+            state.active_match_quizzes[quiz_id] = response.pairs
 
+            return response
+        else:
+            # Use existing flashcards to create match pairs
+            all_flashcards = list(state.flashcards.values())
+            
+            if not all_flashcards:
+                raise HTTPException(
+                    status_code=400,
+                    detail="No flashcards available. Generate flashcards first or provide content."
+                )
+
+            # Filter by difficulty if specified
+            if request.difficulty:
+                difficulty = DifficultyLevel(request.difficulty)
+                all_flashcards = [fc for fc in all_flashcards if fc.difficulty == difficulty]
+                
+            if not all_flashcards:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"No flashcards found with difficulty: {request.difficulty}"
+                )
+
+            # Randomly select flashcards
+            import random
+            num_pairs = min(request.num_pairs or 5, len(all_flashcards))
+            selected_flashcards = random.sample(all_flashcards, num_pairs)
+
+            # Convert flashcards to match pairs
+            pairs = [
+                MatchPair(
+                    id=fc.id,
+                    prompt=fc.front,
+                    answer=fc.back,
+                    hint=None,
+                    tags=fc.tags
+                )
+                for fc in selected_flashcards
+            ]
+
+            # Store match quiz
+            quiz_id = str(uuid.uuid4())
+            state.active_match_quizzes[quiz_id] = pairs
+
+            return MatchQuizGenerationResponse(
+                match_quiz_id=quiz_id,
+                pairs=pairs,
+                total_pairs=len(pairs),
+                content_length=0,
+                generation_time_seconds=0.0
+            )
+
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to generate match quiz: {str(e)}")
 
@@ -415,8 +491,8 @@ async def check_ml_readiness():
         stats = state.logger.get_statistics()
 
         requirements = {
-            "total_interactions": stats['total_interactions'] >= 100,
-            "verified_interactions": stats['verified_interactions'] >= 30,
+            "total_interactions": stats['total_interactions'] >= 20,
+            "verified_interactions": stats['verified_interactions'] >= 5,
         }
 
         all_ready = all(requirements.values())
@@ -446,20 +522,35 @@ async def upload_document(file: UploadFile = File(...)):
         Extracted text content
     """
     try:
-        # Save uploaded file temporarily
-        upload_dir = Path("data/uploads")
-        upload_dir.mkdir(parents=True, exist_ok=True)
+        # Read file content
+        content = await file.read()
 
-        file_path = upload_dir / file.filename
-        with open(file_path, "wb") as f:
-            content = await file.read()
-            f.write(content)
+        # Initialize processor with API key
+        api_key = os.getenv("GEMINI_API_KEY")
+        processor = DocumentProcessor(gemini_api_key=api_key)
 
         # Process document
-        processor = DocumentProcessor()
-        processed_doc = processor.process_document(str(file_path))
+        processed_doc = processor.process_document(
+            file_bytes=content,
+            filename=file.filename,
+            mime_type=file.content_type
+        )
+
+        # Store document in state
+        import uuid
+        from datetime import datetime
+        doc_id = str(uuid.uuid4())
+        state.uploaded_documents[doc_id] = {
+            "id": doc_id,
+            "filename": file.filename,
+            "content": processed_doc.content,
+            "preview": processed_doc.preview,
+            "uploaded_at": datetime.now().isoformat(),
+            "metadata": processed_doc.metadata.model_dump()
+        }
 
         return {
+            "id": doc_id,
             "filename": file.filename,
             "content": processed_doc.content,
             "preview": processed_doc.preview,
@@ -470,7 +561,122 @@ async def upload_document(file: UploadFile = File(...)):
         raise HTTPException(status_code=500, detail=f"Failed to process document: {str(e)}")
 
 
-# ==================== Health Check ====================
+@app.get("/api/documents")
+async def list_documents():
+    """
+    Get list of all uploaded documents.
+
+    Returns:
+        List of uploaded documents
+    """
+    try:
+        documents = [
+            {
+                "id": doc["id"],
+                "filename": doc["filename"],
+                "preview": doc["preview"],
+                "uploaded_at": doc["uploaded_at"]
+            }
+            for doc in state.uploaded_documents.values()
+        ]
+        return {"documents": documents}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to list documents: {str(e)}")
+
+
+@app.get("/api/documents/{doc_id}")
+async def get_document(doc_id: str):
+    """
+    Get a specific document by ID.
+
+    Args:
+        doc_id: Document ID
+
+    Returns:
+        Document details with full content
+    """
+    try:
+        if doc_id not in state.uploaded_documents:
+            raise HTTPException(status_code=404, detail="Document not found")
+
+        return state.uploaded_documents[doc_id]
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get document: {str(e)}")
+
+
+# ==================== Note Structuring & Chat Endpoints ====================
+
+@app.post("/api/notes/structure")
+async def structure_note(request: StructureNoteRequest):
+    """
+    Structure a note using AI - converts unstructured text into organized content.
+
+    Args:
+        request: Contains note_id and content to structure
+
+    Returns:
+        Structured note content with headers, sections, and formatting
+    """
+    try:
+        if not state.api_key:
+            raise HTTPException(
+                status_code=500,
+                detail="Gemini API key not configured. Set GEMINI_API_KEY environment variable."
+            )
+
+        generator = AIContentGenerator(api_key=state.api_key)
+        structured_content = generator.structure_note(request.content)
+
+        return {
+            "note_id": request.note_id,
+            "structured_content": structured_content,
+            "message": "Note structured successfully"
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to structure note: {str(e)}")
+
+
+@app.post("/api/chat")
+async def chat_with_ai(request: ChatRequest):
+    """
+    Chat with AI about documents, notes, or general questions.
+
+    Args:
+        request: Contains message, optional context, source_id, and file_uri
+
+    Returns:
+        AI response and optionally updated note content
+    """
+    try:
+        if not state.api_key:
+            raise HTTPException(
+                status_code=500,
+                detail="Gemini API key not configured. Set GEMINI_API_KEY environment variable."
+            )
+
+        generator = AIContentGenerator(api_key=state.api_key)
+        response = generator.chat(
+            message=request.message,
+            context=request.context,
+            source_id=request.source_id
+        )
+
+        return {
+            "reply": response["reply"],
+            "updated_note_content": response.get("updated_note_content"),
+            "message": "Chat response generated"
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to generate chat response: {str(e)}")
+
+
+# ==================== Health Check ===================="
 
 @app.get("/")
 async def root():

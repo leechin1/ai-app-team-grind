@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import {
   Target, ArrowLeft, Play, RotateCw, Trophy, CheckCircle2,
   XCircle, ChevronRight
@@ -23,16 +23,27 @@ interface QuizState {
   questions: QuizQuestion[];
   answers: (number | null)[];
   currentQuestionIndex: number;
+  questionStartTimes: number[]; // Track when each question was started
 }
 
 export default function Quiz() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [viewMode, setViewMode] = useState<ViewMode>('setup');
 
   // Setup state
   const [content, setContent] = useState('');
   const [numQuestions, setNumQuestions] = useState(5);
   const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium');
+
+  // Check if content was passed from Upload page
+  useEffect(() => {
+    const uploadedContent = (location.state as any)?.content;
+    if (uploadedContent) {
+      setContent(uploadedContent);
+      toast.info('PDF content loaded! Ready to generate quiz.');
+    }
+  }, [location.state]);
 
   // Quiz state
   const [quizState, setQuizState] = useState<QuizState | null>(null);
@@ -42,11 +53,13 @@ export default function Quiz() {
     mutationFn: (data: { content: string; num_questions: number; difficulty: string }) =>
       quizAPI.generate(data),
     onSuccess: (data) => {
+      const now = Date.now();
       setQuizState({
         quiz_id: data.quiz_id,
         questions: data.questions,
         answers: new Array(data.questions.length).fill(null),
         currentQuestionIndex: 0,
+        questionStartTimes: new Array(data.questions.length).fill(now),
       });
       setViewMode('taking');
       toast.success(`Quiz generated with ${data.questions.length} questions!`);
@@ -87,7 +100,15 @@ export default function Quiz() {
 
     const newAnswers = [...quizState.answers];
     newAnswers[quizState.currentQuestionIndex] = answerIndex;
-    setQuizState({ ...quizState, answers: newAnswers });
+    
+    // Record the time when answer was selected (if not already recorded)
+    const newStartTimes = [...quizState.questionStartTimes];
+    if (newStartTimes[quizState.currentQuestionIndex] === newStartTimes[0]) {
+      // First time answering this question, record start time
+      newStartTimes[quizState.currentQuestionIndex] = Date.now();
+    }
+    
+    setQuizState({ ...quizState, answers: newAnswers, questionStartTimes: newStartTimes });
   };
 
   const handleNext = () => {
@@ -121,9 +142,11 @@ export default function Quiz() {
       return;
     }
 
+    const now = Date.now();
     const answers = quizState.questions.map((q, i) => ({
       question_id: q.id,
-      selected_index: quizState.answers[i]!,
+      user_answer_index: quizState.answers[i]!,
+      time_spent_seconds: (now - quizState.questionStartTimes[i]) / 1000,
     }));
 
     submitMutation.mutate({

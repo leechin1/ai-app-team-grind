@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import {
   Zap, ArrowLeft, Play, RotateCw, Trophy, Shuffle
 } from "lucide-react";
@@ -29,12 +29,24 @@ interface MatchState {
 
 export default function MatchQuiz() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [viewMode, setViewMode] = useState<ViewMode>('setup');
+  const [useExistingFlashcards, setUseExistingFlashcards] = useState(true);
 
   // Setup state
   const [content, setContent] = useState('');
   const [numPairs, setNumPairs] = useState(5);
   const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium');
+
+  // Check if content was passed from Upload page
+  useEffect(() => {
+    const uploadedContent = (location.state as any)?.content;
+    if (uploadedContent) {
+      setContent(uploadedContent);
+      setUseExistingFlashcards(false);
+      toast.info('PDF content loaded! Ready to generate match quiz.');
+    }
+  }, [location.state]);
 
   // Match state
   const [matchState, setMatchState] = useState<MatchState | null>(null);
@@ -80,13 +92,13 @@ export default function MatchQuiz() {
   });
 
   const handleGenerate = () => {
-    if (!content.trim()) {
-      toast.error('Please enter some content');
+    if (!useExistingFlashcards && !content.trim()) {
+      toast.error('Please enter some content or use existing flashcards');
       return;
     }
 
     generateMutation.mutate({
-      content,
+      content: useExistingFlashcards ? '' : content,
       num_pairs: numPairs,
       difficulty,
     });
@@ -154,12 +166,16 @@ export default function MatchQuiz() {
     if (!matchState) return;
 
     const endTime = Date.now();
+    const totalTime = (endTime - matchState.startTime) / 1000;
+    const timePerMatch = totalTime / matches.size;
+    
     setMatchState({ ...matchState, endTime, matches });
 
-    // Submit to backend
+    // Submit to backend with correct field names
     const answers = Array.from(matches.entries()).map(([promptIndex, answerShuffledIndex]) => ({
       pair_id: matchState.pairs[promptIndex].id,
-      selected_answer: matchState.shuffledAnswers[answerShuffledIndex].text,
+      user_matched_index: matchState.shuffledAnswers[answerShuffledIndex].index,
+      time_spent_seconds: timePerMatch,
     }));
 
     submitMutation.mutate({
@@ -235,20 +251,35 @@ export default function MatchQuiz() {
 
             <Card>
               <CardContent className="pt-6 space-y-4">
-                <div>
-                  <Label htmlFor="content">Study Material</Label>
-                  <Textarea
-                    id="content"
-                    placeholder="Paste your notes, lecture content, or study material here..."
-                    value={content}
-                    onChange={(e) => setContent(e.target.value)}
-                    rows={12}
-                    className="mt-2"
+                <div className="flex items-center space-x-2 mb-4">
+                  <input
+                    type="checkbox"
+                    id="use-flashcards"
+                    checked={useExistingFlashcards}
+                    onChange={(e) => setUseExistingFlashcards(e.target.checked)}
+                    className="w-4 h-4"
                   />
-                  <p className="text-sm text-muted-foreground mt-1">
-                    {content.length} characters
-                  </p>
+                  <Label htmlFor="use-flashcards" className="cursor-pointer">
+                    Use existing flashcards (recommended)
+                  </Label>
                 </div>
+
+                {!useExistingFlashcards && (
+                  <div>
+                    <Label htmlFor="content">Study Material</Label>
+                    <Textarea
+                      id="content"
+                      placeholder="Paste your notes, lecture content, or study material here..."
+                      value={content}
+                      onChange={(e) => setContent(e.target.value)}
+                      rows={12}
+                      className="mt-2"
+                    />
+                    <p className="text-sm text-muted-foreground mt-1">
+                      {content.length} characters
+                    </p>
+                  </div>
+                )}
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
@@ -282,7 +313,7 @@ export default function MatchQuiz() {
                 <div className="flex gap-2 pt-4">
                   <Button
                     onClick={handleGenerate}
-                    disabled={generateMutation.isPending || !content.trim()}
+                    disabled={generateMutation.isPending || (!useExistingFlashcards && !content.trim())}
                     className="flex-1"
                   >
                     {generateMutation.isPending ? (

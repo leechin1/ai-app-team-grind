@@ -627,3 +627,116 @@ Retorna os pares solicitados.
             return DifficultyLevel.EASY
         else:
             return DifficultyLevel.MEDIUM
+    
+    # ========================================================================
+    # NOTE STRUCTURING
+    # ========================================================================
+    
+    def structure_note(self, content: str) -> str:
+        """
+        Estrutura uma nota com cabeçalhos, seções e formatação.
+        
+        Args:
+            content: Texto da nota não estruturado
+            
+        Returns:
+            Nota estruturada em Markdown
+        """
+        
+        if len(content.strip()) < 20:
+            raise ValueError("Content too short to structure")
+        
+        prompt = f"""You are an expert note organizer. Structure the following note with:
+- Clear hierarchical headers (# ## ###)
+- Organized sections (Introduction, Main Topics, Key Points, Summary)
+- Bullet points for lists
+- Bold for important terms
+- Clean, readable Markdown formatting
+
+Original Note:
+{content}
+
+Return ONLY the structured note in Markdown format, nothing else."""
+
+        try:
+            response = self.client.models.generate_content(
+                model=self.model_name,
+                contents=prompt
+            )
+            
+            structured = response.text.strip()
+            
+            # Remove markdown code blocks if present
+            structured = re.sub(r'^```markdown\n?', '', structured)
+            structured = re.sub(r'\n?```$', '', structured)
+            
+            return structured
+            
+        except Exception as e:
+            raise ValueError(f"Failed to structure note: {str(e)}")
+    
+    # ========================================================================
+    # CHAT WITH AI
+    # ========================================================================
+    
+    def chat(
+        self,
+        message: str,
+        context: Optional[str] = None,
+        source_id: Optional[str] = None
+    ) -> dict:
+        """
+        Chat com IA sobre documentos, notas ou questões gerais.
+        
+        Args:
+            message: Mensagem do usuário
+            context: Contexto opcional (conteúdo da nota/documento)
+            source_id: ID da fonte (para rastreamento)
+            
+        Returns:
+            Dict com 'reply' e opcionalmente 'updated_note_content'
+        """
+        
+        if not message.strip():
+            raise ValueError("Message cannot be empty")
+        
+        # Build context-aware prompt
+        if context:
+            prompt = f"""You are a helpful AI study assistant. The user is working with the following content:
+
+---
+{context}
+---
+
+User question: {message}
+
+Provide a helpful, accurate response. If the user asks you to modify or improve the content above, return the updated content in your response prefixed with "UPDATED_CONTENT:" on a new line."""
+        else:
+            prompt = f"""You are a helpful AI study assistant.
+
+User question: {message}
+
+Provide a helpful, accurate response."""
+
+        try:
+            response = self.client.models.generate_content(
+                model=self.model_name,
+                contents=prompt
+            )
+            
+            reply_text = response.text.strip()
+            
+            # Check if AI updated the content
+            updated_content = None
+            if "UPDATED_CONTENT:" in reply_text:
+                parts = reply_text.split("UPDATED_CONTENT:", 1)
+                reply_text = parts[0].strip()
+                updated_content = parts[1].strip()
+            
+            return {
+                "reply": reply_text,
+                "updated_note_content": updated_content
+            }
+            
+        except Exception as e:
+            raise ValueError(f"Failed to generate chat response: {str(e)}")

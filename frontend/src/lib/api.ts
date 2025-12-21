@@ -112,9 +112,16 @@ export const flashcardAPI = {
    * Generate flashcards from text content
    */
   async generate(request: GenerateFlashcardsRequest) {
+    // Map frontend field names to backend expected names
+    const backendRequest = {
+      content: request.content,
+      num_cards: request.num_flashcards || 10,
+      difficulty_filter: request.difficulty,
+    };
+    
     return fetchAPI<{ flashcards: FlashCard[] }>('/api/flashcards/generate', {
       method: 'POST',
-      body: JSON.stringify(request),
+      body: JSON.stringify(backendRequest),
     });
   },
 
@@ -246,13 +253,98 @@ export const documentAPI = {
     }
 
     return response.json() as Promise<{
+      id: string;
       filename: string;
       content: string;
       preview: string;
       metadata: any;
     }>;
   },
+
+  /**
+   * List all uploaded documents
+   */
+  async list() {
+    return fetchAPI<{ documents: Array<{
+      id: string;
+      filename: string;
+      preview: string;
+      uploaded_at: string;
+    }> }>('/api/documents');
+  },
+
+  /**
+   * Get a specific document by ID
+   */
+  async getById(doc_id: string) {
+    return fetchAPI<{
+      id: string;
+      filename: string;
+      content: string;
+      preview: string;
+      uploaded_at: string;
+      metadata: any;
+    }>(`/api/documents/${doc_id}`);
+  },
 };
+
+// ==================== Helper Functions for Dashboard ====================
+
+/**
+ * Upload a file (wrapper for documentAPI.upload with transformed response)
+ */
+export async function uploadFile(file: File) {
+  const result = await documentAPI.upload(file);
+  return {
+    id: Date.now().toString(),
+    name: result.filename,
+    file_uri: `data/uploads/${result.filename}`,
+    content: result.content,
+    preview: result.preview,
+    metadata: result.metadata,
+  };
+}
+
+/**
+ * Structure a note using AI
+ */
+export async function structureNote(noteId: string, content: string) {
+  return fetchAPI<{
+    note_id: string;
+    structured_content: string;
+    message: string;
+  }>('/api/notes/structure', {
+    method: 'POST',
+    body: JSON.stringify({
+      note_id: noteId,
+      content: content,
+    }),
+  });
+}
+
+/**
+ * Chat with AI about a document or note
+ */
+export async function chatWithAI(
+  message: string,
+  context?: string,
+  sourceId?: string,
+  fileUri?: string
+) {
+  return fetchAPI<{
+    reply: string;
+    updated_note_content?: string;
+    message: string;
+  }>('/api/chat', {
+    method: 'POST',
+    body: JSON.stringify({
+      message: message,
+      context: context,
+      source_id: sourceId,
+      file_uri: fileUri,
+    }),
+  });
+}
 
 // ==================== Health Check API ====================
 
