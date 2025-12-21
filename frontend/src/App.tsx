@@ -10,6 +10,7 @@ import Flashcards from "./pages/Flashcards";
 import Quiz from "./pages/Quiz";
 import MatchQuiz from "./pages/MatchQuiz";
 import Upload from "./pages/Upload";
+import Review from "./pages/Review";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -28,6 +29,7 @@ const App = () => (
           <Route path="/quiz" element={<Quiz />} />
           <Route path="/match" element={<MatchQuiz />} />
           <Route path="/upload" element={<Upload />} />
+          <Route path="/review" element={<Review />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

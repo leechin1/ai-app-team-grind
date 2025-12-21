@@ -28,14 +28,28 @@ export default function Flashcards() {
   const [content, setContent] = useState('');
   const [numCards, setNumCards] = useState(10);
   const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium');
+  const [filterDocumentId, setFilterDocumentId] = useState<string | null>(null);
+  const [filterDocumentName, setFilterDocumentName] = useState<string | null>(null);
 
-  // Check if content was passed from Upload page
+  // Check if content was passed from Upload page or Review page
   useEffect(() => {
-    const uploadedContent = (location.state as any)?.content;
+    const state = location.state as any;
+    const uploadedContent = state?.content;
+    const documentId = state?.documentId;
+    const documentName = state?.documentName;
+    const reviewMode = state?.reviewMode;
+
     if (uploadedContent) {
       setContent(uploadedContent);
       setViewMode('generate');
       toast.info('PDF content loaded! Ready to generate flashcards.');
+    }
+
+    if (reviewMode && documentId) {
+      setFilterDocumentId(documentId);
+      setFilterDocumentName(documentName);
+      setViewMode('review');
+      toast.info(`Reviewing flashcards from "${documentName}"`);
     }
   }, [location.state]);
 
@@ -44,10 +58,22 @@ export default function Flashcards() {
   const [isFlipped, setIsFlipped] = useState(false);
   const [reviewStartTime, setReviewStartTime] = useState<number>(Date.now());
 
-  // Fetch due flashcards
+  // Fetch due flashcards (filtered by document if specified)
   const { data: dueData, isLoading: dueLoading } = useQuery({
-    queryKey: ['flashcards', 'due'],
-    queryFn: () => flashcardAPI.getDue(),
+    queryKey: ['flashcards', 'due', filterDocumentId],
+    queryFn: async () => {
+      if (filterDocumentId) {
+        // Get flashcards for specific document
+        const result = await flashcardAPI.byDocument(filterDocumentId);
+        return {
+          due_cards: result.flashcards || [],
+          total_due: result.total || 0
+        };
+      } else {
+        // Get all due flashcards
+        return flashcardAPI.getDue();
+      }
+    },
     enabled: viewMode === 'review',
   });
 

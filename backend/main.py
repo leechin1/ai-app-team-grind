@@ -197,6 +197,58 @@ async def get_due_flashcards():
         raise HTTPException(status_code=500, detail=f"Failed to get due flashcards: {str(e)}")
 
 
+@app.get("/api/flashcards/by-document")
+async def get_flashcards_by_document(document_id: Optional[str] = None):
+    """
+    Get all flashcards, optionally filtered by document.
+
+    Args:
+        document_id: Optional document ID to filter by
+
+    Returns:
+        Flashcards organized by source document
+    """
+    try:
+        all_cards = list(state.flashcards.values())
+
+        if document_id:
+            # Filter by specific document
+            filtered_cards = [
+                card for card in all_cards
+                if card.source_document_id == document_id
+            ]
+            return {
+                "flashcards": [card.model_dump() for card in filtered_cards],
+                "total": len(filtered_cards),
+                "document_id": document_id
+            }
+
+        # Group by document
+        by_document = {}
+        for card in all_cards:
+            doc_id = card.source_document_id or "manual"
+            doc_name = card.source_document_name or "Manual Entry"
+
+            if doc_id not in by_document:
+                by_document[doc_id] = {
+                    "document_id": doc_id,
+                    "document_name": doc_name,
+                    "flashcards": [],
+                    "count": 0
+                }
+
+            by_document[doc_id]["flashcards"].append(card.model_dump())
+            by_document[doc_id]["count"] += 1
+
+        return {
+            "by_document": list(by_document.values()),
+            "total": len(all_cards)
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get flashcards: {str(e)}")
+
+
 @app.get("/api/flashcards/{flashcard_id}")
 async def get_flashcard(flashcard_id: str):
     """Get a specific flashcard by ID"""

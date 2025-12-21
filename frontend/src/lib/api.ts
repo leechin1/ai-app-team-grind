@@ -156,6 +156,27 @@ export const flashcardAPI = {
       body: JSON.stringify(request),
     });
   },
+
+  /**
+   * Get flashcards by document (filtered or grouped)
+   */
+  async byDocument(documentId?: string) {
+    const url = documentId
+      ? `/api/flashcards/by-document?document_id=${documentId}`
+      : '/api/flashcards/by-document';
+
+    return fetchAPI<{
+      by_document?: Array<{
+        document_id: string;
+        document_name: string;
+        flashcards: FlashCard[];
+        count: number;
+      }>;
+      flashcards?: FlashCard[];
+      total: number;
+      document_id?: string;
+    }>(url);
+  },
 };
 
 // ==================== Quiz API ====================

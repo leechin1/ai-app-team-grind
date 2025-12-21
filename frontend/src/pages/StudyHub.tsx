@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Brain, BookOpen, Target, BarChart3, FileText,
-  Settings, ArrowLeft, Clock, TrendingUp, Zap
+  Settings, ArrowLeft, Clock, TrendingUp, Zap, History
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -64,6 +64,15 @@ export default function StudyHub() {
       color: 'from-amber-500 to-orange-600',
       path: '/upload',
       stats: 'Upload documents',
+    },
+    {
+      id: 'review',
+      title: 'Review Materials',
+      description: 'Browse all your study content organized by source document',
+      icon: History,
+      color: 'from-pink-500 to-rose-600',
+      path: '/review',
+      stats: 'View by document',
     },
   ];
 
@@ -158,7 +167,7 @@ export default function StudyHub() {
         {/* Study Tools */}
         <section>
           <h2 className="text-2xl font-bold mb-6">Study Tools</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {studyTools.map((tool) => {
               const Icon = tool.icon;
               return (
