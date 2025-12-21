@@ -222,9 +222,9 @@ export default function Dashboard() {
   const activeSource = sources.find(s => s.id === activeSourceId);
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="h-screen w-screen bg-background flex flex-col overflow-hidden">
       {/* Header */}
-      <header className="h-14 border-b border-border bg-card/50 backdrop-blur-sm flex items-center justify-between px-4 shrink-0">
+      <header className="h-14 border-b border-border bg-card/50 backdrop-blur-sm flex items-center justify-between px-4 flex-shrink-0">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="icon" onClick={() => navigate("/")}>
             <ChevronLeft className="w-5 h-5" />
@@ -249,8 +249,8 @@ export default function Dashboard() {
       </header>
 
       {/* Main Content - 3 Panel Layout */}
-      <div className="flex-1 flex overflow-hidden">
-        <ResizablePanelGroup direction="horizontal">
+      <div className="flex-1 flex overflow-hidden w-full">
+        <ResizablePanelGroup direction="horizontal" className="w-full">
 
           {/* Left Panel - Sources */}
           <ResizablePanel defaultSize={20} minSize={15} maxSize={30}>

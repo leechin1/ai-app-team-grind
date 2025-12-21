@@ -272,6 +272,40 @@ export const healthAPI = {
   },
 };
 
+// ==================== Note & Chat API ====================
+
+/**
+ * Upload a file
+ */
+export async function uploadFile(file: File) {
+  return documentAPI.upload(file);
+}
+
+/**
+ * Structure a note using AI
+ */
+export async function structureNote(noteId: string, content: string) {
+  return fetchAPI<{ structured: string; message: string }>('/api/notes/structure', {
+    method: 'POST',
+    body: JSON.stringify({ note_id: noteId, content }),
+  });
+}
+
+/**
+ * Chat with AI about content
+ */
+export async function chatWithAI(
+  message: string,
+  context?: string,
+  sourceId?: string,
+  fileUri?: string
+) {
+  return fetchAPI<{ response: string; message?: string }>('/api/chat', {
+    method: 'POST',
+    body: JSON.stringify({ message, context, source_id: sourceId, file_uri: fileUri }),
+  });
+}
+
 // Export default API object
 export default {
   flashcard: flashcardAPI,
