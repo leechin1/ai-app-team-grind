@@ -141,7 +141,7 @@ This timeline shows how our **multi-source ML-enhanced spaced repetition system*
 │  5. Train/Validation Split (80/20)                              │
 │     → Train: 144 weighted samples                               │
 │     → Validation: 36 weighted samples                           │
-│                                                                  │
+│                                                                │
 │  6. Normalization (StandardScaler)                              │
 │     response_time: 2-15s → 0.0-1.0                             │
 │     ease_factor: 1.3-2.5 → 0.0-1.0                             │
