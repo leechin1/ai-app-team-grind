@@ -53,3 +53,12 @@ data/uploads/
 
 # Claude temp files
 .claude/
+
+# Frontend (React/Vite)
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+frontend/.env
+frontend/.env.local
+frontend/.env.production
+frontend/bun.lockb
