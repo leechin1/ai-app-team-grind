@@ -457,7 +457,7 @@ async def upload_document(file: UploadFile = File(...)):
 
         # Process document
         processor = DocumentProcessor()
-        processed_doc = processor.process_document(str(file_path))
+        processed_doc = processor.process_document(content, file.filename)
 
         return {
             "filename": file.filename,

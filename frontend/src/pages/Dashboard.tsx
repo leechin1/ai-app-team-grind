@@ -2,8 +2,8 @@ import { useState, useRef } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import {
   Plus, Upload, FileText, Search, MessageSquare,
-  BookOpen, Sparkles, BarChart3, Brain, Mic,
-  Video, Map, FileStack, Presentation, Settings,
+  BookOpen, Sparkles, BarChart3, Brain,
+  FileStack, Presentation, Settings,
   ChevronLeft, MoreVertical, Send, Loader2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,9 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
+import MDEditor from '@uiw/react-md-editor';
+import '@uiw/react-md-editor/markdown-editor.css';
+import '@uiw/react-markdown-preview/markdown.css';
 import {
   Dialog,
   DialogContent,
@@ -19,11 +22,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import {
   ResizableHandle,
   ResizablePanel,
@@ -49,14 +47,11 @@ interface Message {
 }
 
 const studioTools = [
-  { id: "audio", icon: Mic, label: "Audio Overview" },
-  { id: "video", icon: Video, label: "Video Overview" },
-  { id: "mindmap", icon: Map, label: "Mind Map" },
-  { id: "report", icon: FileStack, label: "Reports" },
-  { id: "flashcards", icon: Brain, label: "Flashcards" },
-  { id: "quiz", icon: BarChart3, label: "Quiz" },
-  { id: "infographic", icon: BarChart3, label: "Infographic" },
-  { id: "slides", icon: Presentation, label: "Slide Deck" },
+  { id: "flashcards", icon: Brain, label: "Flashcards", description: "Generate study flashcards" },
+  { id: "quiz", icon: BarChart3, label: "Quiz", description: "Create practice quizzes" },
+  { id: "report", icon: FileStack, label: "Reports", description: "Generate summary reports" },
+  { id: "infographic", icon: Sparkles, label: "Infographic", description: "Visual content summary" },
+  { id: "slides", icon: Presentation, label: "Slide Deck", description: "Create presentation slides" },
 ];
 
 export default function Dashboard() {
@@ -94,24 +89,25 @@ export default function Dashboard() {
     try {
       const result = await uploadFile(file);
 
+      const newNoteId = Date.now().toString();
       const newSource: Source = {
-        id: result.id,
-        title: result.name,
+        id: newNoteId,
+        title: result.filename,
         type: "pdf",
         createdAt: new Date().toISOString(),
-        file_uri: result.file_uri,
-        content: "PDF Document uploaded. You can now chat with it.",
+        file_uri: result.filename,
+        content: result.preview || "PDF Document uploaded. You can now chat with it.",
         structured: ""
       };
 
       setSources(prev => [...prev, newSource]);
-      setActiveSourceId(result.id);
+      setActiveSourceId(newNoteId);
 
       // Auto-initiate chat
       setMessages(prev => [...prev, {
         id: Date.now().toString(),
         role: "assistant",
-        content: `I've uploaded "${result.name}". You can now ask questions about it or ask me to structure a note from it.`
+        content: `I've uploaded "${result.filename}". You can now ask questions about it or ask me to structure a note from it.`
       }]);
 
       toast.success("PDF uploaded successfully", { id: toastId });
@@ -153,7 +149,7 @@ export default function Dashboard() {
 
       // 3. Update source with structured content
       setSources(prev => prev.map(s =>
-        s.id === newNoteId ? { ...s, structured: result.structured_content } : s
+        s.id === newNoteId ? { ...s, structured: result.structured } : s
       ));
 
       toast.success("Note structured successfully!");
@@ -195,17 +191,9 @@ export default function Dashboard() {
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
-        content: response.reply,
+        content: response.response,
       };
       setMessages(prev => [...prev, aiMessage]);
-
-      // If AI updated the note, update it in state
-      if (response.updated_note_content && activeSourceId) {
-        setSources(prev => prev.map(s =>
-          s.id === activeSourceId ? { ...s, structured: response.updated_note_content! } : s
-        ));
-        toast.success("Note updated by AI");
-      }
     } catch (error) {
       console.error(error);
       toast.error("Failed to get AI response");
@@ -447,22 +435,28 @@ export default function Dashboard() {
               <ResizablePanelGroup direction="vertical">
                 <ResizablePanel defaultSize={25} minSize={15} maxSize={40}>
                   <ScrollArea className="h-full">
-                    <div className="p-3">
-                      <div className="grid grid-cols-2 gap-2">
+                    <div className="p-4">
+                      <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+                        Generate Content
+                      </h3>
+                      <div className="space-y-2">
                         {studioTools.map((tool) => (
-                          <Tooltip key={tool.id}>
-                            <TooltipTrigger asChild>
-                              <Button
-                                variant="outline"
-                                className="h-auto flex-col gap-1.5 py-3 text-muted-foreground hover:text-foreground"
-                                onClick={() => handleToolClick(tool.id)}
-                              >
-                                <tool.icon className="w-5 h-5" />
-                                <span className="text-xs">{tool.label}</span>
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>Generate {tool.label}</TooltipContent>
-                          </Tooltip>
+                          <Button
+                            key={tool.id}
+                            variant="ghost"
+                            className="w-full justify-start gap-3 h-auto py-3 px-3 hover:bg-primary/10 hover:text-primary transition-colors group"
+                            onClick={() => handleToolClick(tool.id)}
+                          >
+                            <div className="p-2 rounded-lg bg-primary/10 text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
+                              <tool.icon className="w-4 h-4" />
+                            </div>
+                            <div className="flex-1 text-left">
+                              <div className="text-sm font-medium">{tool.label}</div>
+                              <div className="text-xs text-muted-foreground group-hover:text-primary/70">
+                                {tool.description}
+                              </div>
+                            </div>
+                          </Button>
                         ))}
                       </div>
                     </div>
@@ -472,19 +466,24 @@ export default function Dashboard() {
                 <ResizableHandle withHandle />
 
                 <ResizablePanel defaultSize={75}>
-                  <div className="h-full flex flex-col">
+                  <div className="h-full flex flex-col overflow-hidden">
                     {activeSource ? (
-                      <Textarea
-                        className="flex-1 w-full p-4 resize-none border-0 focus-visible:ring-0 bg-transparent text-sm leading-relaxed font-mono"
-                        placeholder="Start writing..."
-                        value={activeSource.structured || activeSource.content || ""}
-                        onChange={(e) => {
-                          const newContent = e.target.value;
-                          setSources(prev => prev.map(s =>
-                            s.id === activeSourceId ? { ...s, structured: newContent } : s
-                          ));
-                        }}
-                      />
+                      <div className="flex-1 overflow-auto" data-color-mode="light">
+                        <MDEditor
+                          value={activeSource.structured || activeSource.content || ""}
+                          onChange={(value) => {
+                            setSources(prev => prev.map(s =>
+                              s.id === activeSourceId ? { ...s, structured: value || "" } : s
+                            ));
+                          }}
+                          height="100%"
+                          preview="edit"
+                          hideToolbar={false}
+                          enableScroll={true}
+                          visibleDragbar={false}
+                          className="border-0"
+                        />
+                      </div>
                     ) : (
                       <div className="flex flex-col items-center justify-center flex-1 h-full text-center p-4">
                         <Sparkles className="w-10 h-10 text-muted-foreground/50 mb-3" />
@@ -512,11 +511,11 @@ export default function Dashboard() {
 
       {/* Note Creation Dialog */}
       <Dialog open={isNoteDialogOpen} onOpenChange={setIsNoteDialogOpen}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className="sm:max-w-[700px] max-h-[80vh]">
           <DialogHeader>
             <DialogTitle>Add New Note</DialogTitle>
             <DialogDescription>
-              Paste your raw notes here. AI will structure and organize them for you.
+              Write your notes or upload a PDF. AI will structure and organize them for you.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
@@ -528,13 +527,49 @@ export default function Dashboard() {
                 onChange={(e) => setNoteTitle(e.target.value)}
               />
             </div>
-            <div className="grid gap-2">
-              <Textarea
-                id="content"
-                placeholder="Paste your notes here..."
-                className="min-h-[200px]"
+
+            {/* PDF Upload Option */}
+            <div className="flex items-center gap-2">
+              <input
+                type="file"
+                ref={fileInputRef}
+                className="hidden"
+                accept=".pdf"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+
+                  try {
+                    const result = await uploadFile(file);
+                    setNoteTitle(result.filename);
+                    setNoteContent(result.content || result.preview);
+                    toast.success("PDF content loaded");
+                  } catch (error) {
+                    console.error(error);
+                    toast.error("Failed to load PDF");
+                  }
+                }}
+              />
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <Upload className="w-4 h-4 mr-2" />
+                Upload PDF
+              </Button>
+            </div>
+
+            {/* Markdown Editor */}
+            <div className="border rounded-md overflow-hidden" data-color-mode="light">
+              <MDEditor
                 value={noteContent}
-                onChange={(e) => setNoteContent(e.target.value)}
+                onChange={(value) => setNoteContent(value || "")}
+                height={300}
+                preview="edit"
+                hideToolbar={false}
+                visibleDragbar={false}
               />
             </div>
           </div>

@@ -1,13 +1,13 @@
 
 """
-Gerador de conteúdo educacional usando Gemini API.
+Educational content generator using Gemini API.
 
-Este módulo implementa a lógica de:
-- Gerar flashcards a partir de texto
-- Gerar quizzes de escolha múltipla
-- Prompt engineering otimizado
-- Validação robusta de outputs
-- Retry logic para falhas de API
+This module implements the logic for:
+- Generating flashcards from text
+- Generating multiple choice quizzes
+- Optimized prompt engineering
+- Robust output validation
+- Retry logic for API failures
 """
 
 from google import genai
@@ -26,33 +26,34 @@ from core.models import (
     MatchPair,
     MatchQuizGenerationResponse
 )
+from langfuse import observe
 
 
 class AIContentGenerator:
     """
-    Gera flashcards e quizzes usando Gemini API.
-    
+    Generates flashcards and quizzes using Gemini API.
+
     Examples:
         >>> generator = AIContentGenerator(api_key="your_key")
-        >>> response = generator.generate_flashcards("A mitocôndria...", num_cards=5)
-        >>> print(f"Gerados {len(response.flashcards)} flashcards")
+        >>> response = generator.generate_flashcards("Mitochondria...", num_cards=5)
+        >>> print(f"Generated {len(response.flashcards)} flashcards")
     """
-    
+
     def __init__(self, api_key: str, model_name: str = "gemini-2.5-flash"):
         """
-        Inicializa o gerador.
+        Initialize the generator.
 
         Args:
             api_key: Gemini API key
-            model_name: Modelo a usar (default: gemini-2.5-flash - rápido e barato)
+            model_name: Model to use (default: gemini-2.5-flash - fast and cheap)
         """
         self.client = genai.Client(api_key=api_key)
         self.model_name = model_name
-    
+
     # ========================================================================
     # FLASHCARDS GENERATION
     # ========================================================================
-    
+    @observe()
     def generate_flashcards(
         self,
         content: str,
@@ -63,38 +64,38 @@ class AIContentGenerator:
         source_document_name: Optional[str] = None,
     ) -> FlashcardGenerationResponse:
         """
-        Gera flashcards a partir de conteúdo educacional.
-        
+        Generate flashcards from educational content.
+
         Args:
-            content: Texto fonte (de PDF, editor, etc)
-            num_cards: Quantos flashcards gerar (1-50)
-            difficulty_filter: Filtrar por dificuldade específica
-            focus_topics: Lista de tópicos para focar
-            source_document_id: ID do documento de origem
-            source_document_name: Nome do documento de origem
-            
+            content: Source text (from PDF, editor, etc)
+            num_cards: How many flashcards to generate (1-50)
+            difficulty_filter: Filter by specific difficulty
+            focus_topics: List of topics to focus on
+            source_document_id: ID of source document
+            source_document_name: Name of source document
+
         Returns:
-            FlashcardGenerationResponse com flashcards validados e metadados
-            
+            FlashcardGenerationResponse with validated flashcards and metadata
+
         Raises:
-            ValueError: Se conteúdo muito curto ou geração falhar
+            ValueError: If content too short or generation fails
         """
-        
+
         start_time = time.time()
-        
-        # Validação
+
+        # Validation
         if len(content.strip()) < 50:
             raise ValueError(
-                f"Conteúdo muito curto para gerar flashcards. "
-                f"Mínimo 50 caracteres, recebido: {len(content)}"
+                f"Content too short to generate flashcards. "
+                f"Minimum 50 characters, received: {len(content)}"
             )
-        
+
         if not 1 <= num_cards <= 50:
-            raise ValueError("num_cards deve estar entre 1 e 50")
-        
-        print(f"Gerando {num_cards} flashcards...")
-        
-        # Constrói prompt
+            raise ValueError("num_cards must be between 1 and 50")
+
+        print(f"Generating {num_cards} flashcards...")
+
+        # Build prompt
         prompt = self._build_flashcard_prompt(
             content=content,
             num_cards=num_cards,
@@ -103,64 +104,64 @@ class AIContentGenerator:
         )
 
         flashcard_schema = TypeAdapter(List[FlashCard]).json_schema()
-        # Chama Gemini
-        raw_response = self._call_gemini_with_retry(prompt= prompt, response_schema=flashcard_schema)
-        
+        # Call Gemini
+        raw_response = self._call_gemini_with_retry(prompt=prompt, response_schema=flashcard_schema)
+
         # Parse JSON
         flashcards_data = json.loads(raw_response)
-        
-        # Valida e cria Flashcard objects
+
+        # Validate and create Flashcard objects
         flashcards = []
         warnings = []
-        
+
         for i, card_data in enumerate(flashcards_data):
             try:
-                # Adiciona metadados de origem
+                # Add source metadata
                 card_data['source_document_id'] = source_document_id
                 card_data['source_document_name'] = source_document_name
-                
-                # Valida com Pydantic
+
+                # Validate with Pydantic
                 flashcard = FlashCard(**card_data)
                 flashcards.append(flashcard)
-                
+
             except Exception as e:
-                warning = f"Card {i+1} inválido: {str(e)[:80]}"
+                warning = f"Card {i+1} invalid: {str(e)[:80]}"
                 warnings.append(warning)
-                print(f"   [AVISO] {warning}")
-        
-        # Verifica que gerou pelo menos alguns
+                print(f"   [WARNING] {warning}")
+
+        # Check that at least some were generated
         if len(flashcards) == 0:
             raise ValueError(
-                "Nenhum flashcard válido foi gerado. "
-                "Tenta com conteúdo diferente ou menos cards."
+                "No valid flashcards were generated. "
+                "Try with different content or fewer cards."
             )
-        
+
         if len(flashcards) < num_cards // 2:
             warnings.append(
-                f"Apenas {len(flashcards)} de {num_cards} cards válidos"
+                f"Only {len(flashcards)} of {num_cards} valid cards"
             )
-        
-        # Calcula metadados
+
+        # Calculate metadata
         generation_time = time.time() - start_time
-        estimated_reading_time = len(content) / 1000 * 4  # ~250 palavras/min
-        
-        # Identifica tópicos
+        estimated_reading_time = len(content) / 1000 * 4  # ~250 words/min
+
+        # Identify topics
         identified_topics = list(set(
-            tag 
-            for card in flashcards 
+            tag
+            for card in flashcards
             for tag in card.tags
         ))
-        
-        print(f"[OK] Gerados {len(flashcards)} flashcards em {generation_time:.1f}s")
-        
-        # Retorna response (using only fields defined in FlashcardGenerationResponse model)
+
+        print(f"[OK] Generated {len(flashcards)} flashcards in {generation_time:.1f}s")
+
+        # Return response (using only fields defined in FlashcardGenerationResponse model)
         return FlashcardGenerationResponse(
             flashcards=flashcards,
             total_generated=len(flashcards),
             content_length=len(content),
             generation_time_seconds=round(generation_time, 2)
         )
-    
+
     def _build_flashcard_prompt(
         self,
         content: str,
@@ -168,58 +169,58 @@ class AIContentGenerator:
         difficulty_filter: Optional[DifficultyLevel],
         focus_topics: Optional[List[str]]
     ) -> str:
-        """Constrói prompt otimizado para gerar flashcards"""
-        
-        # Instruções de dificuldade
+        """Build optimized prompt for generating flashcards"""
+
+        # Difficulty instructions
         if difficulty_filter:
-            difficulty_instruction = f"\n- Todos os cards devem ter dificuldade: {difficulty_filter.value}"
+            difficulty_instruction = f"\n- All cards must have difficulty: {difficulty_filter.value}"
         else:
-            difficulty_instruction = "\n- Varia a dificuldade (easy/medium/hard) de forma equilibrada"
-        
-        # Instruções de tópicos
+            difficulty_instruction = "\n- Vary difficulty (easy/medium/hard) in a balanced way"
+
+        # Topics instructions
         topics_instruction = ""
         if focus_topics:
             topics_str = ", ".join(focus_topics)
-            topics_instruction = f"\n- Foca especialmente nestes tópicos: {topics_str}"
-        
-        # tunca se muito longo (limite de tokens)
+            topics_instruction = f"\n- Focus especially on these topics: {topics_str}"
+
+        # Truncate if too long (token limit)
         max_content_length = 8000
         if len(content) > max_content_length:
-            content = content[:max_content_length] + "\n\n[... conteúdo truncado ...]"
-        
-        # Prompt estruturado
+            content = content[:max_content_length] + "\n\n[... content truncated ...]"
+
+        # Structured prompt
         prompt = f"""
-Você é um especialista em criar material educacional de alta qualidade.
+You are an expert in creating high-quality educational material.
 
-TAREFA: Cria {num_cards} flashcards educacionais baseados no conteúdo abaixo.
+TASK: Create {num_cards} educational flashcards based on the content below.
 
-CONTEÚDO FONTE:
+SOURCE CONTENT:
 {content}
 
-INSTRUÇÕES IMPORTANTES:
-- Cada flashcard deve testar UM conceito específico
-- Front (pergunta): Clara, concisa, sem ambiguidade (máx 100 caracteres)
-- Back (resposta): Completa mas sucinta, não copiar texto literal (máx 300 caracteres)
-- Tags: Identifica 1-3 tags relevantes (ex: ["biologia", "célula", "organelas"])
-- Difficulty: 
-  * easy - definições simples, factos básicos
-  * medium - relações entre conceitos, processos
-  * hard - análise, aplicação, comparações complexas{difficulty_instruction}{topics_instruction}
-- Varia os tipos de perguntas: "O que é...", "Qual a função...", "Como...", "Diferença entre..."
-- NÃO inventes informação que não está no conteúdo
-- NÃO uses perguntas verdadeiro/falso
-- SÊ específico e preciso
+IMPORTANT INSTRUCTIONS:
+- Each flashcard should test ONE specific concept
+- Front (question): Clear, concise, unambiguous (max 100 characters)
+- Back (answer): Complete but succinct, don't copy literal text (max 300 characters)
+- Tags: Identify 1-3 relevant tags (e.g., ["biology", "cell", "organelles"])
+- Difficulty:
+  * easy - simple definitions, basic facts
+  * medium - relationships between concepts, processes
+  * hard - analysis, application, complex comparisons{difficulty_instruction}{topics_instruction}
+- Vary question types: "What is...", "What's the function of...", "How...", "Difference between..."
+- DO NOT invent information not in the content
+- DO NOT use true/false questions
+- BE specific and precise
 
-Retorna os flascards solicitados
+Return the requested flashcards
 
 """
-        
+
         return prompt
-    
+
     # ========================================================================
     # QUIZ GENERATION
     # ========================================================================
-    
+    @observe()
     def generate_quiz(
         self,
         content: str,
@@ -228,31 +229,31 @@ Retorna os flascards solicitados
         focus_topics: Optional[List[str]] = None
     ) -> List[QuizQuestion]:
         """
-        Gera quiz de escolha múltipla (sempre 4 opções).
-        
+        Generate multiple choice quiz (always 4 options).
+
         Args:
-            content: Texto fonte
-            num_questions: Quantas questões (1-20)
-            difficulty_filter: Filtro de dificuldade
-            focus_topics: Tópicos específicos
-            
+            content: Source text
+            num_questions: How many questions (1-20)
+            difficulty_filter: Difficulty filter
+            focus_topics: Specific topics
+
         Returns:
-            Lista de QuizQuestion validados
-            
+            List of validated QuizQuestions
+
         Raises:
-            ValueError: Se conteúdo muito curto ou geração falhar
+            ValueError: If content too short or generation fails
         """
-        
-        # Validação
+
+        # Validation
         if len(content.strip()) < 50:
-            raise ValueError("Conteúdo muito curto para gerar quiz")
-        
+            raise ValueError("Content too short to generate quiz")
+
         if not 1 <= num_questions <= 20:
-            raise ValueError("num_questions deve estar entre 1 e 20")
-        
-        print(f"Gerando {num_questions} questoes de quiz...")
-        
-        # Constrói prompt
+            raise ValueError("num_questions must be between 1 and 20")
+
+        print(f"Generating {num_questions} quiz questions...")
+
+        # Build prompt
         prompt = self._build_quiz_prompt(
             content=content,
             num_questions=num_questions,
@@ -260,36 +261,36 @@ Retorna os flascards solicitados
             focus_topics=focus_topics
         )
 
-        quizz_schema = TypeAdapter(List[QuizQuestion]).json_schema()
+        quiz_schema = TypeAdapter(List[QuizQuestion]).json_schema()
 
-        # Chama Gemini
-        raw_response = self._call_gemini_with_retry(prompt = prompt, response_schema = quizz_schema)
-        
+        # Call Gemini
+        raw_response = self._call_gemini_with_retry(prompt=prompt, response_schema=quiz_schema)
+
         # Parse JSON
         questions_data = json.loads(raw_response)
-        
-        # Valida e cria QuizQuestion objects
+
+        # Validate and create QuizQuestion objects
         questions = []
-        
+
         for i, q_data in enumerate(questions_data):
             try:
-                # Pydantic vai validar automaticamente:
-                # - Exatamente 4 opções
-                # - correct_answer_index entre 0-3
-                # - Sem duplicatas, etc
+                # Pydantic will automatically validate:
+                # - Exactly 4 options
+                # - correct_answer_index between 0-3
+                # - No duplicates, etc
                 question = QuizQuestion(**q_data)
                 questions.append(question)
-                
+
             except Exception as e:
-                print(f"   [AVISO] Questao {i+1} invalida: {str(e)[:80]}")
-        
+                print(f"   [WARNING] Question {i+1} invalid: {str(e)[:80]}")
+
         if len(questions) == 0:
-            raise ValueError("Nenhuma questão válida foi gerada")
-        
-        print(f"[OK] Geradas {len(questions)} questoes validas")
-        
+            raise ValueError("No valid questions were generated")
+
+        print(f"[OK] Generated {len(questions)} valid questions")
+
         return questions
-    
+
     def _build_quiz_prompt(
         self,
         content: str,
@@ -297,57 +298,57 @@ Retorna os flascards solicitados
         difficulty_filter: Optional[DifficultyLevel],
         focus_topics: Optional[List[str]]
     ) -> str:
-        """Constrói prompt para gerar quiz"""
-        
-        # Instruções de dificuldade
+        """Build prompt for generating quiz"""
+
+        # Difficulty instructions
         if difficulty_filter:
-            difficulty_instruction = f"\n- Todas as questões: dificuldade {difficulty_filter.value}"
+            difficulty_instruction = f"\n- All questions: difficulty {difficulty_filter.value}"
         else:
-            difficulty_instruction = "\n- Varia a dificuldade de forma equilibrada"
-        
-        # Instruções de tópicos
+            difficulty_instruction = "\n- Vary difficulty in a balanced way"
+
+        # Topics instructions
         topics_instruction = ""
         if focus_topics:
             topics_str = ", ".join(focus_topics)
-            topics_instruction = f"\n- Foca nestes tópicos: {topics_str}"
-        
-        # Trunca se necessário
+            topics_instruction = f"\n- Focus on these topics: {topics_str}"
+
+        # Truncate if necessary
         max_length = 8000
         if len(content) > max_length:
-            content = content[:max_length] + "\n\n[... truncado ...]"
-        
+            content = content[:max_length] + "\n\n[... truncated ...]"
+
         prompt = f"""
-Você é um especialista em criar avaliações educacionais.
+You are an expert in creating educational assessments.
 
-TAREFA: Cria {num_questions} questões de escolha múltipla baseadas no conteúdo.
+TASK: Create {num_questions} multiple choice questions based on the content.
 
-CONTEÚDO FONTE:
+SOURCE CONTENT:
 {content}
 
-INSTRUÇÕES CRÍTICAS:
-- Cada questão DEVE ter EXATAMENTE 4 opções (nem mais, nem menos)
-- Apenas UMA resposta correta por questão
-- Opções incorretas (distratores) devem ser:
-  * Plausíveis (baseadas em misconceptions comuns)
-  * Claramente erradas para quem sabe o conteúdo
-  * Não absurdas ou óbvias
-- Question: Clara, completa, sem ambiguidade
-- Explanation: 2-3 frases explicando porque a resposta está correta
-- Concept: Conceito principal testado (ex: "Organelas celulares")
+CRITICAL INSTRUCTIONS:
+- Each question MUST have EXACTLY 4 options (no more, no less)
+- Only ONE correct answer per question
+- Incorrect options (distractors) must be:
+  * Plausible (based on common misconceptions)
+  * Clearly wrong for those who know the content
+  * Not absurd or obvious
+- Question: Clear, complete, unambiguous
+- Explanation: 2-3 sentences explaining why the answer is correct
+- Concept: Main concept being tested (e.g., "Cell organelles")
 - Difficulty:{difficulty_instruction}{topics_instruction}
-- Varia os tipos: definições, aplicação, comparação, causa-efeito
-- NÃO uses "todas as anteriores" ou "nenhuma das anteriores"
-- NÃO inventes informação que não está no conteúdo
-- Opções devem ter tamanho similar (não dar pistas)
+- Vary types: definitions, application, comparison, cause-effect
+- DO NOT use "all of the above" or "none of the above"
+- DO NOT invent information not in the content
+- Options should have similar length (don't give hints)
 
 """
-        
+
         return prompt
 
     # ========================================================================
     # MATCH QUIZ GENERATION (Flashcard Matching)
     # ========================================================================
-
+    @observe()
     def generate_match_quiz(
         self,
         content: str,
@@ -356,33 +357,33 @@ INSTRUÇÕES CRÍTICAS:
         focus_topics: Optional[List[str]] = None
     ) -> MatchQuizGenerationResponse:
         """
-        Gera match quiz (matching pairs) para o utilizador fazer match.
+        Generate match quiz (matching pairs) for the user to match.
 
         Args:
-            content: Texto fonte
-            num_pairs: Quantos pares gerar (1-15)
-            difficulty_filter: Filtro de dificuldade
-            focus_topics: Tópicos específicos
+            content: Source text
+            num_pairs: How many pairs to generate (1-15)
+            difficulty_filter: Difficulty filter
+            focus_topics: Specific topics
 
         Returns:
-            MatchQuizGenerationResponse com pares validados
+            MatchQuizGenerationResponse with validated pairs
 
         Raises:
-            ValueError: Se conteúdo muito curto ou geração falhar
+            ValueError: If content too short or generation fails
         """
 
         start_time = time.time()
 
-        # Validação
+        # Validation
         if len(content.strip()) < 50:
-            raise ValueError("Conteúdo muito curto para gerar match quiz")
+            raise ValueError("Content too short to generate match quiz")
 
         if not 1 <= num_pairs <= 15:
-            raise ValueError("num_pairs deve estar entre 1 e 15")
+            raise ValueError("num_pairs must be between 1 and 15")
 
-        print(f"Gerando {num_pairs} pares para match quiz...")
+        print(f"Generating {num_pairs} pairs for match quiz...")
 
-        # Constrói prompt
+        # Build prompt
         prompt = self._build_match_quiz_prompt(
             content=content,
             num_pairs=num_pairs,
@@ -390,10 +391,10 @@ INSTRUÇÕES CRÍTICAS:
             focus_topics=focus_topics
         )
 
-        # Cria schema
+        # Create schema
         match_schema = TypeAdapter(List[MatchPair]).json_schema()
 
-        # Chama Gemini
+        # Call Gemini
         raw_response = self._call_gemini_with_retry(
             prompt=prompt,
             response_schema=match_schema
@@ -402,7 +403,7 @@ INSTRUÇÕES CRÍTICAS:
         # Parse JSON
         pairs_data = json.loads(raw_response)
 
-        # Valida e cria MatchPair objects
+        # Validate and create MatchPair objects
         pairs = []
 
         for i, pair_data in enumerate(pairs_data):
@@ -410,14 +411,14 @@ INSTRUÇÕES CRÍTICAS:
                 pair = MatchPair(**pair_data)
                 pairs.append(pair)
             except Exception as e:
-                print(f"   [AVISO] Par {i+1} invalido: {str(e)[:80]}")
+                print(f"   [WARNING] Pair {i+1} invalid: {str(e)[:80]}")
 
         if len(pairs) == 0:
-            raise ValueError("Nenhum par válido foi gerado")
+            raise ValueError("No valid pairs were generated")
 
         generation_time = time.time() - start_time
 
-        print(f"[OK] Gerados {len(pairs)} pares validos em {generation_time:.1f}s")
+        print(f"[OK] Generated {len(pairs)} valid pairs in {generation_time:.1f}s")
 
         return MatchQuizGenerationResponse(
             pairs=pairs,
@@ -433,53 +434,53 @@ INSTRUÇÕES CRÍTICAS:
         difficulty_filter: Optional[DifficultyLevel],
         focus_topics: Optional[List[str]]
     ) -> str:
-        """Constrói prompt para gerar match quiz"""
+        """Build prompt for generating match quiz"""
 
-        # Instruções de dificuldade
+        # Difficulty instructions
         if difficulty_filter:
-            difficulty_instruction = f"\n- Todos os pares: dificuldade {difficulty_filter.value}"
+            difficulty_instruction = f"\n- All pairs: difficulty {difficulty_filter.value}"
         else:
-            difficulty_instruction = "\n- Varia a dificuldade de forma equilibrada"
+            difficulty_instruction = "\n- Vary difficulty in a balanced way"
 
-        # Instruções de tópicos
+        # Topics instructions
         topics_instruction = ""
         if focus_topics:
             topics_str = ", ".join(focus_topics)
-            topics_instruction = f"\n- Foca nestes tópicos: {topics_str}"
+            topics_instruction = f"\n- Focus on these topics: {topics_str}"
 
-        # Trunca se necessário
+        # Truncate if necessary
         max_length = 8000
         if len(content) > max_length:
-            content = content[:max_length] + "\n\n[... truncado ...]"
+            content = content[:max_length] + "\n\n[... truncated ...]"
 
         prompt = f"""
-Você é um especialista em criar material educacional interativo.
+You are an expert in creating interactive educational material.
 
-TAREFA: Cria {num_pairs} pares de matching (prompt + answer) baseados no conteúdo.
+TASK: Create {num_pairs} matching pairs (prompt + answer) based on the content.
 
-CONTEÚDO FONTE:
+SOURCE CONTENT:
 {content}
 
-INSTRUÇÕES CRÍTICAS:
-- Cada par consiste em:
-  * prompt: Termo, conceito ou pergunta curta (máx 100 caracteres)
-  * answer: Definição, explicação ou resposta (máx 300 caracteres)
-- Os pares devem ser DISTINTOS e NÃO ambíguos
-- Cada prompt deve ter apenas UMA resposta correta óbvia
-- Evita pares que possam ter múltiplas respostas válidas
-- Tags: 1-3 tags relevantes para categorização
-- hint (opcional): Uma dica sutil se o conceito for difícil{difficulty_instruction}{topics_instruction}
-- NÃO inventes informação que não está no conteúdo
-- Varia os tipos: definições, funções, características, relações
+CRITICAL INSTRUCTIONS:
+- Each pair consists of:
+  * prompt: Term, concept or short question (max 100 characters)
+  * answer: Definition, explanation or response (max 300 characters)
+- Pairs must be DISTINCT and NOT ambiguous
+- Each prompt should have only ONE obvious correct answer
+- Avoid pairs that could have multiple valid answers
+- Tags: 1-3 relevant tags for categorization
+- hint (optional): A subtle hint if the concept is difficult{difficulty_instruction}{topics_instruction}
+- DO NOT invent information not in the content
+- Vary types: definitions, functions, characteristics, relationships
 
-EXEMPLOS de bons pares:
-- prompt: "Organela responsável pela produção de energia (ATP)"
-  answer: "Mitocôndria"
+EXAMPLES of good pairs:
+- prompt: "Organelle responsible for energy (ATP) production"
+  answer: "Mitochondria"
 
-- prompt: "Processo de divisão do núcleo celular"
-  answer: "Mitose"
+- prompt: "Process of nuclear division"
+  answer: "Mitosis"
 
-Retorna os pares solicitados.
+Return the requested pairs.
 """
 
         return prompt
@@ -488,42 +489,43 @@ Retorna os pares solicitados.
     # HELPER METHODS
     # ========================================================================
 
+    
     def _call_gemini_with_retry(
-        self, 
-        prompt: str, 
+        self,
+        prompt: str,
         max_retries: int = 3,
         response_schema: Optional[dict] = None
     ) -> str:
         """
-        Chama Gemini com retry logic para falhas temporárias.
-        
-        Implementa exponential backoff:
-        - Tentativa 1: imediato
-        - Tentativa 2: espera 1s
-        - Tentativa 3: espera 2s
-        - Tentativa 4: espera 4s
+        Call Gemini with retry logic for temporary failures.
+
+        Implements exponential backoff:
+        - Attempt 1: immediate
+        - Attempt 2: wait 1s
+        - Attempt 3: wait 2s
+        - Attempt 4: wait 4s
         """
-        
+
         for attempt in range(max_retries):
             try:
                 response = self.client.models.generate_content(
                     model=self.model_name,
                     contents=prompt,
-                    config= {"response_mime_type" : "application/json",
-                             "response_schema" : response_schema
-                    
+                    config={"response_mime_type": "application/json",
+                            "response_schema": response_schema
+
                     }
                 )
 
                 if not response.text:
-                    raise ValueError("Gemini retornou resposta vazia")
+                    raise ValueError("Gemini returned empty response")
 
                 return response.text
-                
+
             except Exception as e:
                 error_msg = str(e)
-                print(f"   [AVISO] Tentativa {attempt + 1}/{max_retries} falhou: {error_msg[:80]}")
-                
+                print(f"   [WARNING] Attempt {attempt + 1}/{max_retries} failed: {error_msg[:80]}")
+
                 if attempt < max_retries - 1:
                     # Exponential backoff
                     wait_time = 2 ** attempt
@@ -532,95 +534,95 @@ Retorna os pares solicitados.
                 else:
                     # Last attempt failed
                     raise Exception(
-                        f"Gemini API falhou após {max_retries} tentativas. "
-                        f"Último erro: {error_msg}"
+                        f"Gemini API failed after {max_retries} attempts. "
+                        f"Last error: {error_msg}"
                     )
-    
+
     def _parse_json_response(self, raw_text: str) -> list:
         """
-        Limpa e parseia resposta JSON do Gemini.
-        
-        Lida com:
+        Clean and parse JSON response from Gemini.
+
+        Handles:
         - Markdown code blocks (```json)
-        - Texto extra antes/depois do JSON
+        - Extra text before/after JSON
         - Whitespace
         """
-        
+
         # Remove markdown code blocks
         clean_text = re.sub(r'```json\s*', '', raw_text)
         clean_text = re.sub(r'```\s*', '', clean_text)
-        
-        # Encontra início do JSON ([ ou {)
+
+        # Find JSON start ([ or {)
         json_start = -1
         for i, char in enumerate(clean_text):
             if char in '[{':
                 json_start = i
                 break
-        
+
         if json_start == -1:
             raise ValueError(
-                "Não foi encontrado JSON válido na resposta. "
-                f"Resposta: {raw_text[:200]}..."
+                "No valid JSON found in response. "
+                f"Response: {raw_text[:200]}..."
             )
-        
-        # Encontra fim do JSON (] ou })
+
+        # Find JSON end (] or })
         json_end = -1
         for i in range(len(clean_text) - 1, -1, -1):
             if clean_text[i] in ']}':
                 json_end = i + 1
                 break
-        
+
         if json_end == -1:
-            raise ValueError("JSON incompleto na resposta")
-        
-        # Extrai só JSON
+            raise ValueError("Incomplete JSON in response")
+
+        # Extract only JSON
         json_text = clean_text[json_start:json_end].strip()
-        
+
         # Parse
         try:
             parsed = json.loads(json_text)
-            
+
             if not isinstance(parsed, list):
-                raise ValueError(f"Esperava lista, recebeu {type(parsed).__name__}")
-            
+                raise ValueError(f"Expected list, received {type(parsed).__name__}")
+
             if len(parsed) == 0:
-                raise ValueError("Lista JSON está vazia")
-            
+                raise ValueError("JSON list is empty")
+
             return parsed
-            
+
         except json.JSONDecodeError as e:
-            print(f"❌ Erro ao parsear JSON:")
+            print(f"❌ Error parsing JSON:")
             print(f"   {str(e)}")
-            print(f"   JSON problemático:")
+            print(f"   Problematic JSON:")
             print(f"   {json_text[:300]}...")
-            raise ValueError(f"JSON inválido: {str(e)}")
-    
+            raise ValueError(f"Invalid JSON: {str(e)}")
+
     def _assess_content_difficulty(
         self,
         flashcards: List[FlashCard]
     ) -> Optional[DifficultyLevel]:
         """
-        Avalia dificuldade geral do conteúdo baseado nos flashcards.
-        
-        Lógica:
-        - Se >50% são hard → conteúdo é hard
-        - Se >50% são easy → conteúdo é easy
-        - Caso contrário → medium
+        Assess overall content difficulty based on flashcards.
+
+        Logic:
+        - If >50% are hard → content is hard
+        - If >50% are easy → content is easy
+        - Otherwise → medium
         """
         if not flashcards:
             return None
-        
+
         difficulty_counts = {
             DifficultyLevel.EASY: 0,
             DifficultyLevel.MEDIUM: 0,
             DifficultyLevel.HARD: 0
         }
-        
+
         for card in flashcards:
             difficulty_counts[card.difficulty] += 1
-        
+
         total = len(flashcards)
-        
+
         if difficulty_counts[DifficultyLevel.HARD] > total * 0.5:
             return DifficultyLevel.HARD
         elif difficulty_counts[DifficultyLevel.EASY] > total * 0.5:
