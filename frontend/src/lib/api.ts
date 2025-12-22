@@ -307,6 +307,23 @@ export const documentAPI = {
       metadata: any;
     }>(`/api/documents/${doc_id}`);
   },
+
+  /**
+   * Process a document through AI analysis and smart templating
+   */
+  async process(content: string, documentId?: string) {
+    return fetchAPI<{
+      formatted_content: string;
+      template_type: string;
+      document_id: string;
+    }>('/api/documents/process', {
+      method: 'POST',
+      body: JSON.stringify({
+        content: content,
+        document_id: documentId,
+      }),
+    });
+  },
 };
 
 // ==================== Helper Functions for Dashboard ====================

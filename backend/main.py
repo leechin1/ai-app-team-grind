@@ -47,9 +47,11 @@ app.add_middleware(
         "http://localhost:3000",  # React dev server
         "http://localhost:5173",  # Vite dev server
         "http://localhost:8080",  # Vite dev server (alternative port)
+        "http://localhost:8081",  # Vite dev server (alternative port)
         "http://127.0.0.1:3000",
         "http://127.0.0.1:5173",
         "http://127.0.0.1:8080",
+        "http://127.0.0.1:8081",
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -726,6 +728,67 @@ async def chat_with_ai(request: ChatRequest):
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to generate chat response: {str(e)}")
+
+
+# ==================== Document Processing Endpoint ====================
+
+class ProcessDocumentRequest(BaseModel):
+    """Request to process and structure a document"""
+    content: str
+    document_id: Optional[str] = None
+
+
+class ProcessDocumentResponse(BaseModel):
+    """Response from document processing"""
+    formatted_content: str
+    template_type: str
+    document_id: str
+
+
+@app.post("/api/documents/process", response_model=ProcessDocumentResponse)
+async def process_document_endpoint(request: ProcessDocumentRequest):
+    """
+    Process a raw document through AI analysis and template formatting.
+
+    This endpoint:
+    1. Analyzes the document type (academic, scientific, or graphical)
+    2. Extracts structured information using AI
+    3. Formats the content using the appropriate template
+    4. Returns beautifully formatted markdown
+
+    Args:
+        request: Document content and optional ID
+
+    Returns:
+        Formatted markdown output and template type used
+    """
+    try:
+        if not state.api_key:
+            raise HTTPException(
+                status_code=500,
+                detail="Gemini API key not configured. Set GEMINI_API_KEY environment variable."
+            )
+
+        # Import the document analyzer
+        from core.document_analyzer import DocumentAnalyzer
+
+        # Create analyzer instance
+        analyzer = DocumentAnalyzer(gemini_api_key=state.api_key)
+
+        # Process the document
+        formatted_markdown, template_type = await analyzer.process_document(request.content)
+
+        # Generate document ID if not provided
+        doc_id = request.document_id or str(uuid.uuid4())
+
+        return ProcessDocumentResponse(
+            formatted_content=formatted_markdown,
+            template_type=template_type,
+            document_id=doc_id
+        )
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to process document: {str(e)}")
 
 
 # ==================== Health Check ===================="
