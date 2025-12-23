@@ -1,6 +1,7 @@
 import { useState, useRef } from "react";
-import { useNavigate } from "react-router-dom";
-import { FileText, ArrowLeft, Upload as UploadIcon, File, Check, Brain, Target, Zap, Trash2 } from "lucide-react";
+import { useNavigate, useParams } from "react-router-dom";
+import { FileText, Upload as UploadIcon, File, Check, Brain, Target, Zap, Trash2 } from "lucide-react";
+import ProjectLayout from "@/components/ProjectLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -18,6 +19,7 @@ import {
 
 export default function Upload() {
   const navigate = useNavigate();
+  const { projectId } = useParams<{ projectId: string }>();
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
@@ -73,24 +75,7 @@ export default function Upload() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-4">
-              <Button variant="ghost" size="icon" onClick={() => navigate('/study')}>
-                <ArrowLeft className="w-5 h-5" />
-              </Button>
-              <div className="flex items-center gap-2">
-                <FileText className="w-6 h-6 text-primary" />
-                <span className="text-xl font-bold">Upload Material</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </header>
-
+    <ProjectLayout>
       <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="space-y-6">
           <div>
@@ -270,6 +255,6 @@ export default function Upload() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </ProjectLayout>
   );
 }

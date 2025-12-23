@@ -1,5 +1,5 @@
-import { useNavigate, useLocation } from "react-router-dom";
-import { Home, MessageCircle, Brain, Zap, Target, FolderOpen, LogOut } from "lucide-react";
+import { useNavigate, useLocation, useParams } from "react-router-dom";
+import { ArrowLeft, MessageCircle, Brain, Zap, Target, FolderOpen, LogOut, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { authService } from "@/lib/auth";
 import { cn } from "@/lib/utils";
@@ -7,15 +7,16 @@ import { cn } from "@/lib/utils";
 export default function Sidebar() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { projectId } = useParams();
   const user = authService.getCurrentUser();
 
   const navigation = [
-    { name: "Home", icon: Home, path: "/home" },
-    { name: "ChatIQ", icon: MessageCircle, path: "/chatiq" },
-    { name: "Flashcards", icon: Brain, path: "/flashcards" },
-    { name: "Match Quiz", icon: Zap, path: "/match" },
-    { name: "Quiz", icon: Target, path: "/quiz" },
-    { name: "Files", icon: FolderOpen, path: "/files" },
+    { name: "Editor", icon: FileText, path: `/project/${projectId}` },
+    { name: "ChatIQ", icon: MessageCircle, path: `/project/${projectId}/chatiq` },
+    { name: "Flashcards", icon: Brain, path: `/project/${projectId}/flashcards` },
+    { name: "Match Quiz", icon: Zap, path: `/project/${projectId}/match` },
+    { name: "Quiz", icon: Target, path: `/project/${projectId}/quiz` },
+    { name: "Files", icon: FolderOpen, path: `/project/${projectId}/files` },
   ];
 
   const handleLogout = () => {
@@ -25,8 +26,16 @@ export default function Sidebar() {
 
   return (
     <div className="flex h-screen w-64 flex-col border-r bg-card">
-      {/* Logo */}
-      <div className="flex h-16 items-center gap-2 border-b px-6">
+      {/* Logo & Back Button */}
+      <div className="flex h-16 items-center gap-2 border-b px-4">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => navigate("/home")}
+          className="shrink-0"
+        >
+          <ArrowLeft className="h-5 w-5" />
+        </Button>
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
             <Brain className="w-5 h-5 text-primary-foreground" />

@@ -36,6 +36,8 @@ const App = () => (
               </ProtectedRoute>
             }
           />
+
+          {/* Project-scoped routes */}
           <Route
             path="/project/:projectId"
             element={
@@ -45,7 +47,7 @@ const App = () => (
             }
           />
           <Route
-            path="/chatiq"
+            path="/project/:projectId/chatiq"
             element={
               <ProtectedRoute>
                 <ChatIQ />
@@ -53,7 +55,7 @@ const App = () => (
             }
           />
           <Route
-            path="/flashcards"
+            path="/project/:projectId/flashcards"
             element={
               <ProtectedRoute>
                 <Flashcards />
@@ -61,7 +63,7 @@ const App = () => (
             }
           />
           <Route
-            path="/quiz"
+            path="/project/:projectId/quiz"
             element={
               <ProtectedRoute>
                 <Quiz />
@@ -69,7 +71,7 @@ const App = () => (
             }
           />
           <Route
-            path="/match"
+            path="/project/:projectId/match"
             element={
               <ProtectedRoute>
                 <MatchQuiz />
@@ -77,7 +79,7 @@ const App = () => (
             }
           />
           <Route
-            path="/files"
+            path="/project/:projectId/files"
             element={
               <ProtectedRoute>
                 <Upload />
@@ -85,7 +87,7 @@ const App = () => (
             }
           />
           <Route
-            path="/review"
+            path="/project/:projectId/review"
             element={
               <ProtectedRoute>
                 <Review />

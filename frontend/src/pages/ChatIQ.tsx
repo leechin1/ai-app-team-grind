@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import Sidebar from "@/components/Sidebar";
+import ProjectLayout from "@/components/ProjectLayout";
 
 interface Message {
   id: string;
@@ -53,10 +53,8 @@ export default function ChatIQ() {
   };
 
   return (
-    <div className="flex h-screen bg-background">
-      <Sidebar />
-
-      <main className="flex-1 flex flex-col">
+    <ProjectLayout>
+      <div className="flex-1 flex flex-col h-screen">
         {/* Header */}
         <div className="border-b px-8 py-4">
           <div className="flex items-center justify-between">
@@ -171,7 +169,7 @@ export default function ChatIQ() {
             Press Enter to send, Shift+Enter for new line
           </p>
         </div>
-      </main>
-    </div>
+      </div>
+    </ProjectLayout>
   );
 }

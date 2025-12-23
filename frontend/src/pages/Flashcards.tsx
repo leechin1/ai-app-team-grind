@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation, useParams } from "react-router-dom";
 import {
-  Brain, ArrowLeft, Play, Plus, RotateCw, Check, X,
+  Brain, Play, Plus, RotateCw, Check, X,
   Clock, Flame, Target
 } from "lucide-react";
+import ProjectLayout from "@/components/ProjectLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
@@ -21,6 +22,7 @@ type ViewMode = 'menu' | 'generate' | 'review';
 export default function Flashcards() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { projectId } = useParams<{ projectId: string }>();
   const queryClient = useQueryClient();
   const [viewMode, setViewMode] = useState<ViewMode>('menu');
 
@@ -174,15 +176,13 @@ export default function Flashcards() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-4">
-              <Button variant="ghost" size="icon" onClick={() => navigate('/study')}>
-                <ArrowLeft className="w-5 h-5" />
-              </Button>
+    <ProjectLayout>
+      <div className="min-h-screen bg-background">
+        {/* Header */}
+        <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between h-16">
+              <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
                 <Brain className="w-6 h-6 text-primary" />
                 <span className="text-xl font-bold">Flashcards</span>
@@ -502,5 +502,6 @@ export default function Flashcards() {
         )}
       </main>
     </div>
+    </ProjectLayout>
   );
 }

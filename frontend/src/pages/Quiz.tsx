@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation, useParams } from "react-router-dom";
 import {
-  Target, ArrowLeft, Play, RotateCw, Trophy, CheckCircle2,
+  Target, Play, RotateCw, Trophy, CheckCircle2,
   XCircle, ChevronRight
 } from "lucide-react";
+import ProjectLayout from "@/components/ProjectLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
@@ -29,6 +30,7 @@ interface QuizState {
 export default function Quiz() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { projectId } = useParams<{ projectId: string }>();
   const [viewMode, setViewMode] = useState<ViewMode>('setup');
 
   // Setup state
@@ -169,29 +171,7 @@ export default function Quiz() {
   const currentAnswer = quizState?.answers[quizState.currentQuestionIndex];
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-4">
-              <Button variant="ghost" size="icon" onClick={() => navigate('/study')}>
-                <ArrowLeft className="w-5 h-5" />
-              </Button>
-              <div className="flex items-center gap-2">
-                <Target className="w-6 h-6 text-primary" />
-                <span className="text-xl font-bold">Quiz</span>
-              </div>
-            </div>
-            {viewMode === 'taking' && quizState && (
-              <div className="text-sm text-muted-foreground">
-                Question {quizState.currentQuestionIndex + 1} of {quizState.questions.length}
-              </div>
-            )}
-          </div>
-        </div>
-      </header>
-
+    <ProjectLayout>
       <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Setup View */}
         {viewMode === 'setup' && (
@@ -443,6 +423,6 @@ export default function Quiz() {
           </div>
         )}
       </main>
-    </div>
+    </ProjectLayout>
   );
 }

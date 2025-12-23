@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { ArrowLeft, BookOpen, Brain, Target, Zap, FileText, ChevronRight } from "lucide-react";
+import { useNavigate, useParams } from "react-router-dom";
+import { BookOpen, Brain, Target, Zap, FileText, ChevronRight } from "lucide-react";
+import ProjectLayout from "@/components/ProjectLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -11,6 +12,7 @@ import { toast } from "sonner";
 
 export default function Review() {
   const navigate = useNavigate();
+  const { projectId } = useParams<{ projectId: string }>();
 
   // Fetch all flashcards grouped by document
   const { data: flashcardsData, isLoading: flashcardsLoading } = useQuery({
@@ -55,25 +57,23 @@ export default function Review() {
   const isLoading = flashcardsLoading || documentsLoading;
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-4">
-              <Button variant="ghost" size="icon" onClick={() => navigate('/study')}>
-                <ArrowLeft className="w-5 h-5" />
-              </Button>
-              <div className="flex items-center gap-2">
-                <BookOpen className="w-6 h-6 text-primary" />
-                <span className="text-xl font-bold">Review Materials</span>
+    <ProjectLayout>
+      <div className="min-h-screen bg-background">
+        {/* Header */}
+        <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between h-16">
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <BookOpen className="w-6 h-6 text-primary" />
+                  <span className="text-xl font-bold">Review Materials</span>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      </header>
+        </header>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="space-y-6">
           <div>
             <h1 className="text-3xl font-bold mb-2">Review Your Study Materials</h1>
@@ -333,5 +333,6 @@ export default function Review() {
         </div>
       </main>
     </div>
+    </ProjectLayout>
   );
 }
