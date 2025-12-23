@@ -249,6 +249,19 @@ async def get_flashcards_by_document(document_id: Optional[str] = None):
         raise HTTPException(status_code=500, detail=f"Failed to get flashcards: {str(e)}")
 
 
+@app.get("/api/flashcards/all")
+async def get_all_flashcards():
+    """Get ALL flashcards regardless of review status"""
+    try:
+        all_cards = list(state.flashcards.values())
+        return {
+            "flashcards": [card.model_dump() for card in all_cards],
+            "total": len(all_cards)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get flashcards: {str(e)}")
+
+
 @app.get("/api/flashcards/{flashcard_id}")
 async def get_flashcard(flashcard_id: str):
     """Get a specific flashcard by ID"""

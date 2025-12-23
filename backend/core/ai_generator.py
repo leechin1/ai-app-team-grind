@@ -8,14 +8,17 @@ Este módulo implementa a lógica de:
 - Prompt engineering otimizado
 - Validação robusta de outputs
 - Retry logic para falhas de API
+- Observabilidade com Langfuse
 """
 
 from google import genai
 import json
 import re
 import time
+import os
 from typing import List, Optional
 from pydantic import TypeAdapter
+from langfuse.decorators import observe, langfuse_context
 
 from core.models import (
     FlashCard,
@@ -52,7 +55,8 @@ class AIContentGenerator:
     # ========================================================================
     # FLASHCARDS GENERATION
     # ========================================================================
-    
+
+    @observe(name="generate_flashcards", as_type="generation")
     def generate_flashcards(
         self,
         content: str,
@@ -219,7 +223,8 @@ Retorna os flascards solicitados
     # ========================================================================
     # QUIZ GENERATION
     # ========================================================================
-    
+
+    @observe(name="generate_quiz", as_type="generation")
     def generate_quiz(
         self,
         content: str,
@@ -348,6 +353,7 @@ INSTRUÇÕES CRÍTICAS:
     # MATCH QUIZ GENERATION (Flashcard Matching)
     # ========================================================================
 
+    @observe(name="generate_match_quiz", as_type="generation")
     def generate_match_quiz(
         self,
         content: str,
