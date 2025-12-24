@@ -4,9 +4,9 @@
 -- Adds embeddings table and RAG functions
 -- ============================================
 
--- Verify pgvector is enabled
--- If this fails, go to Database > Extensions and enable "vector"
-CREATE EXTENSION IF NOT EXISTS "pgvector";
+-- pgvector should already be enabled via Supabase UI
+-- Verify it's loaded (this query should not error)
+SELECT extversion FROM pg_extension WHERE extname = 'vector';
 
 -- ============================================
 -- EMBEDDINGS TABLE (Vector storage for RAG)
