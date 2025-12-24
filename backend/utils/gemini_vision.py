@@ -2,7 +2,7 @@
 Extração de texto de imagens usando Gemini Vision API.
 """
 
-from google import genai
+import google.generativeai as genai
 from PIL import Image
 import io
 

@@ -11,14 +11,30 @@ Este módulo implementa a lógica de:
 - Observabilidade com Langfuse
 """
 
-from google import genai
+import google.generativeai as genai
 import json
 import re
 import time
 import os
 from typing import List, Optional
 from pydantic import TypeAdapter
-from langfuse.decorators import observe, langfuse_context
+
+# Make Langfuse optional
+try:
+    from langfuse.decorators import observe, langfuse_context
+    LANGFUSE_AVAILABLE = True
+except ImportError:
+    LANGFUSE_AVAILABLE = False
+    # Create dummy decorators
+    def observe(*args, **kwargs):
+        def decorator(func):
+            return func
+        return decorator if args else decorator
+
+    class langfuse_context:
+        @staticmethod
+        def update_current_trace(*args, **kwargs):
+            pass
 
 from core.models import (
     FlashCard,

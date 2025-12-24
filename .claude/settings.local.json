@@ -9,7 +9,11 @@
       "Bash(dir /s /b)",
       "Bash(findstr:*)",
       "Bash(npm install:*)",
-      "Bash(npm run dev:*)"
+      "Bash(npm run dev:*)",
+      "Bash(ping:*)",
+      "Bash(start /B python:*)",
+      "Bash(timeout:*)",
+      "Bash(pip install:*)"
     ],
     "deny": [],
     "ask": []
