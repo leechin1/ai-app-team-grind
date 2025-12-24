@@ -11,25 +11,11 @@ import "@/styles/quill-custom.css";
 // Mock data for MVP
 const MOCK_NOTES: Record<string, { title: string; course: string; dueDate: string; type: string; content: string }> = {
   "1": {
-    title: "Introduction to Biology",
-    course: "Biology 101",
+    title: "Optimization Algorithms Overview",
+    course: "Computer Science 301",
     dueDate: "2025-12-30",
     type: "Study Notes",
-    content: "<h2>Cell Biology</h2><p>Cells are the basic unit of life...</p><h3>Mitochondria</h3><p>The powerhouse of the cell...</p>"
-  },
-  "2": {
-    title: "React Programming",
-    course: "Web Development",
-    dueDate: "2025-12-28",
-    type: "Project Notes",
-    content: "<h2>React Hooks</h2><p>Hooks let you use state and other React features...</p><h3>useState</h3><p>The useState hook...</p>"
-  },
-  "3": {
-    title: "Organic Chemistry Notes",
-    course: "Chemistry 201",
-    dueDate: "2026-01-05",
-    type: "Lecture Notes",
-    content: "<h2>Chemical Bonds</h2><p>Atoms form bonds through...</p><h3>Covalent Bonds</h3><p>Electrons are shared...</p>"
+    content: "<h2>Introduction to Optimization</h2><p>Optimization algorithms are essential for finding the best solution from a set of possible solutions. They are widely used in machine learning, operations research, and many other fields.</p><h3>Key Concepts</h3><ul><li><strong>Objective Function:</strong> The function we want to minimize or maximize</li><li><strong>Constraints:</strong> Limitations on the possible solutions</li><li><strong>Search Space:</strong> The set of all possible solutions</li></ul><h3>Common Algorithms</h3><p>Gradient Descent, Simulated Annealing, Genetic Algorithms, Particle Swarm Optimization...</p>"
   },
 };
 
