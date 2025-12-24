@@ -1,11 +1,11 @@
 -- ============================================
--- NOTIQ - Complete Supabase Schema V2
--- Project-scoped architecture with RAG support
+-- NOTIQ - Supabase Schema V2 - STEP 1
+-- Run this FIRST (without pgvector)
+-- Then enable pgvector and run step 2
 -- ============================================
 
--- Enable required extensions
+-- Enable required extensions (pgvector enabled separately via UI)
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-CREATE EXTENSION IF NOT EXISTS "pgvector";
 
 -- ============================================
 -- USERS TABLE (extends Supabase auth.users)
@@ -63,31 +63,6 @@ CREATE TABLE IF NOT EXISTS public.documents (
     mime_type TEXT,
     extracted_text TEXT,
     page_count INTEGER,
-    created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- ============================================
--- EMBEDDINGS TABLE (Vector storage for RAG)
--- ============================================
-CREATE TABLE IF NOT EXISTS public.embeddings (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    project_id UUID NOT NULL REFERENCES public.projects(id) ON DELETE CASCADE,
-    user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
-
-    -- Source reference (note OR document chunk)
-    source_type TEXT NOT NULL CHECK (source_type IN ('note', 'document')),
-    source_id UUID NOT NULL,
-
-    -- Content
-    content TEXT NOT NULL,
-    chunk_index INTEGER DEFAULT 0,
-
-    -- Vector embedding (1536 dimensions for OpenAI, 384 for sentence-transformers)
-    embedding vector(1536),
-
-    -- Metadata
-    metadata JSONB DEFAULT '{}',
-
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -227,13 +202,6 @@ CREATE INDEX IF NOT EXISTS idx_notes_updated_at ON public.notes(updated_at DESC)
 CREATE INDEX IF NOT EXISTS idx_documents_project_id ON public.documents(project_id);
 CREATE INDEX IF NOT EXISTS idx_documents_user_id ON public.documents(user_id);
 
--- Embeddings indexes
-CREATE INDEX IF NOT EXISTS idx_embeddings_project_id ON public.embeddings(project_id);
-CREATE INDEX IF NOT EXISTS idx_embeddings_source ON public.embeddings(source_type, source_id);
--- Vector similarity index (IVFFlat for fast approximate search)
-CREATE INDEX IF NOT EXISTS idx_embeddings_vector ON public.embeddings
-USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100);
-
 -- Flashcards indexes
 CREATE INDEX IF NOT EXISTS idx_flashcards_project_id ON public.flashcards(project_id);
 CREATE INDEX IF NOT EXISTS idx_flashcards_user_id ON public.flashcards(user_id);
@@ -262,7 +230,6 @@ ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.projects ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.notes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.documents ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.embeddings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.flashcards ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.flashcard_reviews ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.quiz_questions ENABLE ROW LEVEL SECURITY;
@@ -310,16 +277,6 @@ CREATE POLICY "Users can create own documents" ON public.documents
     FOR INSERT WITH CHECK (auth.uid() = user_id);
 
 CREATE POLICY "Users can delete own documents" ON public.documents
-    FOR DELETE USING (auth.uid() = user_id);
-
--- Embeddings policies
-CREATE POLICY "Users can view own embeddings" ON public.embeddings
-    FOR SELECT USING (auth.uid() = user_id);
-
-CREATE POLICY "Users can create own embeddings" ON public.embeddings
-    FOR INSERT WITH CHECK (auth.uid() = user_id);
-
-CREATE POLICY "Users can delete own embeddings" ON public.embeddings
     FOR DELETE USING (auth.uid() = user_id);
 
 -- Flashcards policies
@@ -396,40 +353,8 @@ CREATE TRIGGER update_flashcards_updated_at BEFORE UPDATE ON public.flashcards
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- ============================================
--- HELPER FUNCTIONS FOR RAG
+-- HELPER FUNCTIONS
 -- ============================================
-
--- Function to search similar embeddings (semantic search)
-CREATE OR REPLACE FUNCTION match_embeddings(
-    query_embedding vector(1536),
-    match_project_id UUID,
-    match_threshold FLOAT DEFAULT 0.7,
-    match_count INT DEFAULT 5
-)
-RETURNS TABLE (
-    id UUID,
-    content TEXT,
-    source_type TEXT,
-    source_id UUID,
-    similarity FLOAT
-)
-LANGUAGE plpgsql
-AS $$
-BEGIN
-    RETURN QUERY
-    SELECT
-        e.id,
-        e.content,
-        e.source_type,
-        e.source_id,
-        1 - (e.embedding <=> query_embedding) AS similarity
-    FROM public.embeddings e
-    WHERE e.project_id = match_project_id
-        AND 1 - (e.embedding <=> query_embedding) > match_threshold
-    ORDER BY e.embedding <=> query_embedding
-    LIMIT match_count;
-END;
-$$;
 
 -- Function to get due flashcards for a project
 CREATE OR REPLACE FUNCTION get_due_flashcards(
@@ -453,14 +378,7 @@ END;
 $$;
 
 -- ============================================
--- INITIAL DATA / DEMO SETUP
--- ============================================
-
--- This will be handled by the backend when users sign up
--- Demo data can be inserted via the application
-
--- ============================================
--- VIEWS FOR ANALYTICS (Optional)
+-- VIEWS FOR ANALYTICS
 -- ============================================
 
 -- View: Project statistics
@@ -498,13 +416,8 @@ LEFT JOIN public.flashcard_reviews fr ON f.id = fr.flashcard_id
 GROUP BY f.id, f.user_id, f.project_id, f.easiness_factor, f.interval, f.next_review_date;
 
 -- ============================================
--- COMPLETE!
+-- STEP 1 COMPLETE!
 -- ============================================
--- Schema is ready for:
--- ✅ Project-scoped architecture
--- ✅ RAG with vector embeddings
--- ✅ SRS flashcards with review history
--- ✅ Multi-user support with RLS
--- ✅ ChatIQ conversation history
--- ✅ Performance-optimized indexes
+-- Next: Enable pgvector extension via Supabase UI
+-- Then run supabase_schema_v2_step2.sql
 -- ============================================
