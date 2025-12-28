@@ -103,6 +103,7 @@ export default function MatchQuiz() {
       content: useExistingFlashcards ? '' : content,
       num_pairs: numPairs,
       difficulty,
+      project_id: projectId,
     });
   };
 

@@ -1,785 +1,780 @@
 """
-FastAPI Backend for AI Study App.
-
-Provides RESTful API endpoints for:
-- Flashcard generation and review
-- Quiz generation and submission
-- Match quiz generation and submission
-- Spaced repetition (SM-2)
-- Analytics and statistics
+Notiq Backend API v2.0 - Supabase Integration
+Complete backend with persistent storage and embeddings
 """
 
-from fastapi import FastAPI, HTTPException, File, UploadFile
+from fastapi import FastAPI, HTTPException, Depends, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from typing import List, Optional
 from datetime import datetime
 import os
 import uuid
-from pathlib import Path
+from dotenv import load_dotenv
 
-# Import core modules
-from core.ai_generator import AIContentGenerator
-from core.models import (
-    FlashCard, FlashcardGenerationRequest, FlashcardGenerationResponse,
-    QuizQuestion, QuizAnswer, QuizResult,
-    MatchPair, MatchQuizGenerationResponse, MatchQuizAnswer, MatchQuizResult,
-    ResponseQuality, DifficultyLevel
+# Load environment variables
+load_dotenv()
+
+# Import Supabase services
+from core.supabase_client import db
+from core.auth import get_current_user
+from core.embeddings_service_supabase import embeddings_service
+from core.db_models import (
+    ProjectCreate, NoteCreate, NoteUpdate, DocumentCreate,
+    FlashcardCreate, FlashcardReviewCreate, EmbeddingCreate,
+    ChatMessageCreate
 )
+
+# Import AI and other services
+from core.ai_generator import AIContentGenerator
+from core.models import FlashcardGenerationRequest, DifficultyLevel, FlashCard
 from core.spaced_repetition import SM2SpacedRepetition
-from core.review_logger import UnifiedReviewLogger
 from core.document_processor import DocumentProcessor
 
-
-# ==================== FastAPI App Setup ====================
+# ==================== FastAPI Setup ====================
 
 app = FastAPI(
-    title="AI Study App API",
-    description="Backend API for AI-powered study materials generation and spaced repetition",
-    version="1.0.0"
+    title="Notiq API",
+    description="AI study platform with Supabase",
+    version="2.0.0"
 )
 
-# CORS middleware - Allow React frontend to call API
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",  # React dev server
-        "http://localhost:5173",  # Vite dev server
-        "http://localhost:8080",  # Vite dev server (alternative port)
-        "http://127.0.0.1:3000",
-        "http://127.0.0.1:5173",
-        "http://127.0.0.1:8080",
-    ],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+sm2 = SM2SpacedRepetition()
 
-# ==================== Global State ====================
-# In production, use a database instead of in-memory storage
-
-class AppState:
-    """Global application state (in-memory for now)"""
-    def __init__(self):
-        self.flashcards: dict[str, FlashCard] = {}  # flashcard_id -> FlashCard
-        self.active_quizzes: dict[str, List[QuizQuestion]] = {}  # quiz_id -> questions
-        self.active_match_quizzes: dict[str, List[MatchPair]] = {}  # match_quiz_id -> pairs
-        self.uploaded_documents: dict[str, dict] = {}  # doc_id -> {filename, content, uploaded_at}
-        self.sm2 = SM2SpacedRepetition()
-        self.logger = UnifiedReviewLogger()
-        self.api_key = os.getenv("GEMINI_API_KEY")
-
-state = AppState()
-
-
-# ==================== Request/Response Models ====================
-
-class ReviewFlashcardRequest(BaseModel):
-    """Request to review a flashcard"""
-    flashcard_id: str
-    response_quality: int  # 0-5 scale
-    was_correct: bool
-    time_spent_seconds: float
-
-
-class GenerateQuizRequest(BaseModel):
-    """Request to generate a quiz"""
-    content: str
-    num_questions: int = 5
-    difficulty: Optional[str] = "medium"
-    focus_topics: Optional[List[str]] = None
-
-
-class SubmitQuizRequest(BaseModel):
-    """Request to submit quiz answers"""
-    quiz_id: str
-    answers: List[QuizAnswer]
-
-
-class QuizGenerationResponse(BaseModel):
-    """Response from quiz generation"""
-    quiz_id: str
-    questions: List[QuizQuestion]
-
-
-class GenerateMatchQuizRequest(BaseModel):
-    """Request to generate a match quiz"""
-    content: str
-    num_pairs: int = 5
-    difficulty: Optional[str] = "medium"
-    focus_topics: Optional[List[str]] = None
-
-
-class SubmitMatchQuizRequest(BaseModel):
-    """Request to submit match quiz answers"""
-    match_quiz_id: str
-    answers: List[MatchQuizAnswer]
-
-
-class StructureNoteRequest(BaseModel):
-    """Request to structure a note with AI"""
-    note_id: str
-    content: str
-
+# ==================== Request Models ====================
 
 class ChatRequest(BaseModel):
-    """Request to chat with AI"""
+    project_id: str
     message: str
-    context: Optional[str] = None
-    source_id: Optional[str] = None
-    file_uri: Optional[str] = None
 
+class ReviewFlashcardRequest(BaseModel):
+    flashcard_id: str
+    response_quality: int
+    time_spent_seconds: Optional[int] = None
 
-# ==================== Flashcard Endpoints ===================="
+# ==================== Health & Test ====================
 
-@app.post("/api/flashcards/generate", response_model=FlashcardGenerationResponse)
-async def generate_flashcards(request: FlashcardGenerationRequest):
-    """
-    Generate flashcards from text content.
+@app.get("/")
+async def root():
+    return {
+        "status": "online",
+        "message": "Notiq API v2.0 - Supabase Edition",
+        "version": "2.0.0"
+    }
 
-    Args:
-        request: Content and generation parameters
+@app.get("/health")
+async def health_check():
+    gemini_ok = os.getenv("GEMINI_API_KEY") is not None
+    supabase_ok = os.getenv("SUPABASE_URL") is not None and os.getenv("SUPABASE_ANON_KEY") is not None
 
-    Returns:
-        FlashcardGenerationResponse with generated flashcards
-    """
+    return {
+        "status": "healthy" if (gemini_ok and supabase_ok) else "degraded",
+        "gemini_configured": gemini_ok,
+        "supabase_configured": supabase_ok,
+        "database": "supabase",
+        "embeddings": "gemini"
+    }
+
+@app.get("/api/test-db")
+async def test_db():
+    """Test database connection"""
     try:
-        if not state.api_key:
-            raise HTTPException(
-                status_code=500,
-                detail="Gemini API key not configured. Set GEMINI_API_KEY environment variable."
-            )
+        from supabase import create_client
+        url = os.getenv("SUPABASE_URL")
+        key = os.getenv("SUPABASE_ANON_KEY")
 
-        # Convert difficulty string to enum
-        difficulty = DifficultyLevel(request.difficulty_filter) if request.difficulty_filter else None
+        if not url or not key:
+            return {"status": "error", "message": "Credentials not configured"}
 
-        # Initialize AI generator
-        generator = AIContentGenerator(api_key=state.api_key)
-
-        # Generate flashcards
-        response = generator.generate_flashcards(
-            content=request.content,
-            num_cards=request.num_cards,
-            difficulty_filter=difficulty,
-            focus_topics=None  # focus_topics not in FlashcardGenerationRequest model
-        )
-
-        # Store flashcards in memory
-        for flashcard in response.flashcards:
-            state.flashcards[flashcard.id] = flashcard
-
-        return response
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to generate flashcards: {str(e)}")
-
-
-@app.get("/api/flashcards/due")
-async def get_due_flashcards():
-    """
-    Get flashcards that are due for review.
-
-    Returns:
-        List of FlashCard objects due for review
-    """
-    try:
-        all_cards = list(state.flashcards.values())
-        due_cards = state.sm2.get_due_cards(all_cards)
+        client = create_client(url, key)
+        result = client.table("profiles").select("*").limit(1).execute()
 
         return {
-            "due_cards": [card.model_dump() for card in due_cards],
-            "total_due": len(due_cards)
-        }
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get due flashcards: {str(e)}")
-
-
-@app.get("/api/flashcards/by-document")
-async def get_flashcards_by_document(document_id: Optional[str] = None):
-    """
-    Get all flashcards, optionally filtered by document.
-
-    Args:
-        document_id: Optional document ID to filter by
-
-    Returns:
-        Flashcards organized by source document
-    """
-    try:
-        all_cards = list(state.flashcards.values())
-
-        if document_id:
-            # Filter by specific document
-            filtered_cards = [
-                card for card in all_cards
-                if card.source_document_id == document_id
-            ]
-            return {
-                "flashcards": [card.model_dump() for card in filtered_cards],
-                "total": len(filtered_cards),
-                "document_id": document_id
-            }
-
-        # Group by document
-        by_document = {}
-        for card in all_cards:
-            doc_id = card.source_document_id or "manual"
-            doc_name = card.source_document_name or "Manual Entry"
-
-            if doc_id not in by_document:
-                by_document[doc_id] = {
-                    "document_id": doc_id,
-                    "document_name": doc_name,
-                    "flashcards": [],
-                    "count": 0
-                }
-
-            by_document[doc_id]["flashcards"].append(card.model_dump())
-            by_document[doc_id]["count"] += 1
-
-        return {
-            "by_document": list(by_document.values()),
-            "total": len(all_cards)
-        }
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get flashcards: {str(e)}")
-
-
-@app.get("/api/flashcards/all")
-async def get_all_flashcards():
-    """Get ALL flashcards regardless of review status"""
-    try:
-        all_cards = list(state.flashcards.values())
-        return {
-            "flashcards": [card.model_dump() for card in all_cards],
-            "total": len(all_cards)
+            "status": "success",
+            "message": "✅ Connected to Supabase!",
+            "database": "active"
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get flashcards: {str(e)}")
+        return {"status": "error", "message": str(e)}
 
+# ==================== Projects ====================
 
-@app.get("/api/flashcards/{flashcard_id}")
-async def get_flashcard(flashcard_id: str):
-    """Get a specific flashcard by ID"""
-    if flashcard_id not in state.flashcards:
-        raise HTTPException(status_code=404, detail="Flashcard not found")
-
-    return state.flashcards[flashcard_id].model_dump()
-
-
-@app.post("/api/flashcards/review")
-async def review_flashcard(request: ReviewFlashcardRequest):
-    """
-    Submit a flashcard review.
-
-    Args:
-        request: Review details (flashcard_id, response_quality, etc.)
-
-    Returns:
-        Updated flashcard with new SM-2 parameters
-    """
+@app.post("/api/projects")
+async def create_project(project: ProjectCreate, user: dict = Depends(get_current_user)):
     try:
-        # Get flashcard
-        if request.flashcard_id not in state.flashcards:
-            raise HTTPException(status_code=404, detail="Flashcard not found")
-
-        card = state.flashcards[request.flashcard_id]
-
-        # Process review with SM-2
-        updated_card = state.sm2.process_review(
-            card=card,
-            response_quality=request.response_quality
-        )
-
-        # Log review interaction
-        state.logger.log_flashcard_review(
-            flashcard=updated_card,
-            response_quality=request.response_quality,
-            was_correct=request.was_correct,
-            time_spent_seconds=request.time_spent_seconds
-        )
-
-        # Update in memory
-        state.flashcards[request.flashcard_id] = updated_card
-
-        # Get stats
-        stats = state.sm2.get_review_stats(updated_card)
-
-        return {
-            "flashcard": updated_card.model_dump(),
-            "stats": stats,
-            "message": f"Next review in {stats['days_until_review']} days"
-        }
-
+        return await db.create_project(user["id"], project)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to review flashcard: {str(e)}")
+        raise HTTPException(500, str(e))
 
-
-# ==================== Quiz Endpoints ====================
-
-@app.post("/api/quiz/generate", response_model=QuizGenerationResponse)
-async def generate_quiz(request: GenerateQuizRequest):
-    """
-    Generate a quiz from text content.
-
-    Args:
-        request: Content and generation parameters
-
-    Returns:
-        QuizGenerationResponse with generated questions
-    """
+@app.get("/api/projects")
+async def get_projects(user: dict = Depends(get_current_user)):
     try:
-        # Convert difficulty string to enum
-        difficulty = DifficultyLevel(request.difficulty) if request.difficulty else None
-
-        # Initialize AI generator
-        generator = AIContentGenerator(api_key=state.api_key)
-
-        # Generate quiz questions
-        questions = generator.generate_quiz(
-            content=request.content,
-            num_questions=request.num_questions,
-            difficulty_filter=difficulty,
-            focus_topics=request.focus_topics
-        )
-
-        # Generate unique quiz ID
-        import uuid
-        quiz_id = str(uuid.uuid4())
-
-        # Store quiz in state for later submission validation
-        state.active_quizzes[quiz_id] = questions
-
-        return QuizGenerationResponse(quiz_id=quiz_id, questions=questions)
-
+        projects = await db.get_user_projects(user["id"])
+        return {"projects": projects}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to generate quiz: {str(e)}")
+        raise HTTPException(500, str(e))
 
-
-@app.post("/api/quiz/submit")
-async def submit_quiz(request: SubmitQuizRequest):
-    """
-    Submit quiz answers and get results.
-
-    Args:
-        request: Quiz ID and user answers
-
-    Returns:
-        QuizResult with score and feedback
-    """
+@app.get("/api/projects/{project_id}")
+async def get_project(project_id: str, user: dict = Depends(get_current_user)):
     try:
-        # In production, you'd load the quiz from database
-        # For now, we'll just calculate the score from the answers
-
-        # Here we need to match against the original questions
-        # For simplicity, assuming the frontend sends complete answer data
-
-        # Log quiz attempts as verified interactions
-        for answer in request.answers:
-            # Create a dummy flashcard ID for tag linking
-            # In production, you'd link to actual flashcards via tags
-            flashcard_id = f"quiz_{request.quiz_id}_{answer.question_id}"
-
-            # Note: This is simplified - you'd need to pass the actual question
-            # to extract tags properly. For now, we'll skip detailed logging.
-
-        return {
-            "quiz_id": request.quiz_id,
-            "message": "Quiz submitted successfully",
-            "note": "Detailed results require storing quiz questions"
-        }
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to submit quiz: {str(e)}")
-
-
-# ==================== Match Quiz Endpoints ====================
-
-@app.post("/api/match/generate", response_model=MatchQuizGenerationResponse)
-async def generate_match_quiz(request: GenerateMatchQuizRequest):
-    """
-    Generate a match quiz from stored flashcards or text content.
-
-    Args:
-        request: Generation parameters (if content is empty, uses existing flashcards)
-
-    Returns:
-        MatchQuizGenerationResponse with match pairs
-    """
-    try:
-        # Check if user wants to use existing flashcards or generate from content
-        if request.content and request.content.strip():
-            # Generate new match pairs from content using AI
-            if not state.api_key:
-                raise HTTPException(
-                    status_code=500,
-                    detail="Gemini API key not configured. Set GEMINI_API_KEY environment variable."
-                )
-
-            difficulty = DifficultyLevel(request.difficulty) if request.difficulty else None
-            generator = AIContentGenerator(api_key=state.api_key)
-
-            response = generator.generate_match_quiz(
-                content=request.content,
-                num_pairs=request.num_pairs,
-                difficulty_filter=difficulty,
-                focus_topics=request.focus_topics
-            )
-
-            # Store match quiz
-            quiz_id = str(uuid.uuid4())
-            state.active_match_quizzes[quiz_id] = response.pairs
-
-            return response
-        else:
-            # Use existing flashcards to create match pairs
-            all_flashcards = list(state.flashcards.values())
-            
-            if not all_flashcards:
-                raise HTTPException(
-                    status_code=400,
-                    detail="No flashcards available. Generate flashcards first or provide content."
-                )
-
-            # Filter by difficulty if specified
-            if request.difficulty:
-                difficulty = DifficultyLevel(request.difficulty)
-                all_flashcards = [fc for fc in all_flashcards if fc.difficulty == difficulty]
-                
-            if not all_flashcards:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"No flashcards found with difficulty: {request.difficulty}"
-                )
-
-            # Randomly select flashcards
-            import random
-            num_pairs = min(request.num_pairs or 5, len(all_flashcards))
-            selected_flashcards = random.sample(all_flashcards, num_pairs)
-
-            # Convert flashcards to match pairs
-            pairs = [
-                MatchPair(
-                    id=fc.id,
-                    prompt=fc.front,
-                    answer=fc.back,
-                    hint=None,
-                    tags=fc.tags
-                )
-                for fc in selected_flashcards
-            ]
-
-            # Store match quiz
-            quiz_id = str(uuid.uuid4())
-            state.active_match_quizzes[quiz_id] = pairs
-
-            return MatchQuizGenerationResponse(
-                match_quiz_id=quiz_id,
-                pairs=pairs,
-                total_pairs=len(pairs),
-                content_length=0,
-                generation_time_seconds=0.0
-            )
-
+        project = await db.get_project(project_id, user["id"])
+        if not project:
+            raise HTTPException(404, "Project not found")
+        return project
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to generate match quiz: {str(e)}")
+        raise HTTPException(500, str(e))
 
+# ==================== Notes ====================
 
-@app.post("/api/match/submit")
-async def submit_match_quiz(request: SubmitMatchQuizRequest):
-    """
-    Submit match quiz answers and get results.
-
-    Args:
-        request: Match quiz ID and user answers
-
-    Returns:
-        Results with score
-    """
+@app.post("/api/notes")
+async def create_note(note: NoteCreate, user: dict = Depends(get_current_user)):
     try:
-        # Similar to quiz submission, this is simplified
-        # In production, store and retrieve match pairs
+        created_note = await db.create_note(user["id"], note)
 
-        return {
-            "match_quiz_id": request.match_quiz_id,
-            "message": "Match quiz submitted successfully",
-            "note": "Detailed results require storing match pairs"
-        }
+        # Generate embeddings
+        if created_note.content and len(created_note.content) > 50:
+            try:
+                chunks = embeddings_service.embed_document(created_note.content)
+                for chunk in chunks:
+                    emb = EmbeddingCreate(
+                        project_id=created_note.project_id,
+                        source_type="note",
+                        source_id=created_note.id,
+                        content=chunk["content"],
+                        chunk_index=chunk["chunk_index"],
+                        embedding=chunk["embedding"],
+                        metadata={"title": created_note.title}
+                    )
+                    await db.create_embedding(user["id"], emb)
+                print(f"[OK] Generated {len(chunks)} embeddings")
+            except Exception as e:
+                print(f"[WARN] Embeddings error: {e}")
 
+        return created_note
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to submit match quiz: {str(e)}")
+        raise HTTPException(500, str(e))
 
-
-# ==================== Analytics Endpoints ====================
-
-@app.get("/api/stats")
-async def get_statistics():
-    """
-    Get overall user statistics.
-
-    Returns:
-        Statistics about interactions, accuracy, ML readiness
-    """
+@app.get("/api/projects/{project_id}/notes")
+async def get_notes(project_id: str, user: dict = Depends(get_current_user)):
     try:
-        stats = state.logger.get_statistics()
-
-        # Add flashcard stats
-        total_flashcards = len(state.flashcards)
-        due_flashcards = len(state.sm2.get_due_cards(list(state.flashcards.values())))
-
-        stats["flashcards"] = {
-            "total": total_flashcards,
-            "due": due_flashcards
-        }
-
-        return stats
-
+        notes = await db.get_project_notes(project_id, user["id"])
+        return {"notes": notes}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get statistics: {str(e)}")
+        raise HTTPException(500, str(e))
 
-
-@app.get("/api/stats/ml-readiness")
-async def check_ml_readiness():
-    """
-    Check if system is ready for ML training.
-
-    Returns:
-        ML readiness status and requirements
-    """
+@app.get("/api/notes/{note_id}")
+async def get_note(note_id: str, user: dict = Depends(get_current_user)):
     try:
-        stats = state.logger.get_statistics()
-
-        requirements = {
-            "total_interactions": stats['total_interactions'] >= 20,
-            "verified_interactions": stats['verified_interactions'] >= 5,
-        }
-
-        all_ready = all(requirements.values())
-
-        return {
-            "ready": all_ready,
-            "requirements": requirements,
-            "current_stats": stats,
-            "ml_confidence": min(0.8, (stats['verified_interactions'] / 100) * 0.8)
-        }
-
+        note = await db.get_note(note_id, user["id"])
+        if not note:
+            raise HTTPException(404, "Note not found")
+        return note
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to check ML readiness: {str(e)}")
+        raise HTTPException(500, str(e))
 
+@app.patch("/api/notes/{note_id}")
+async def update_note(note_id: str, update: NoteUpdate, user: dict = Depends(get_current_user)):
+    try:
+        updated = await db.update_note(note_id, user["id"], update)
+        if not updated:
+            raise HTTPException(404, "Note not found")
 
-# ==================== Document Upload Endpoints ====================
+        # Regenerate embeddings if content changed
+        if update.content and len(update.content) > 50:
+            try:
+                await db.delete_source_embeddings(note_id, user["id"])
+                chunks = embeddings_service.embed_document(update.content)
+                for chunk in chunks:
+                    emb = EmbeddingCreate(
+                        project_id=updated.project_id,
+                        source_type="note",
+                        source_id=updated.id,
+                        content=chunk["content"],
+                        chunk_index=chunk["chunk_index"],
+                        embedding=chunk["embedding"],
+                        metadata={"title": updated.title}
+                    )
+                    await db.create_embedding(user["id"], emb)
+                print(f"[OK] Regenerated {len(chunks)} embeddings")
+            except Exception as e:
+                print(f"[WARN] Embeddings error: {e}")
+
+        return updated
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(500, str(e))
+
+# ==================== Documents ====================
 
 @app.post("/api/documents/upload")
-async def upload_document(file: UploadFile = File(...)):
-    """
-    Upload a document (PDF, TXT, etc.) for processing.
-
-    Args:
-        file: Uploaded file
-
-    Returns:
-        Extracted text content
-    """
+async def upload_document(
+    project_id: str,
+    file: UploadFile = File(...),
+    user: dict = Depends(get_current_user)
+):
+    """Upload document with persistence to Supabase"""
     try:
-        # Read file content
+        # Read file
         content = await file.read()
 
-        # Initialize processor with API key
+        # Process document
         api_key = os.getenv("GEMINI_API_KEY")
         processor = DocumentProcessor(gemini_api_key=api_key)
 
-        # Process document
-        processed_doc = processor.process_document(
+        processed = processor.process_document(
             file_bytes=content,
             filename=file.filename,
             mime_type=file.content_type
         )
 
-        # Store document in state
-        import uuid
-        from datetime import datetime
-        doc_id = str(uuid.uuid4())
-        state.uploaded_documents[doc_id] = {
-            "id": doc_id,
-            "filename": file.filename,
-            "content": processed_doc.content,
-            "preview": processed_doc.preview,
-            "uploaded_at": datetime.now().isoformat(),
-            "metadata": processed_doc.metadata.model_dump()
-        }
+        # Save to database
+        doc_data = DocumentCreate(
+            project_id=project_id,
+            filename=file.filename,
+            file_path=f"uploads/{user['id']}/{file.filename}",
+            file_size=len(content),
+            mime_type=file.content_type,
+            extracted_text=processed.content,
+            page_count=processed.metadata.num_pages
+        )
+
+        document = await db.create_document(user["id"], doc_data)
+
+        # Generate embeddings
+        if processed.content and len(processed.content) > 50:
+            try:
+                chunks = embeddings_service.embed_document(processed.content)
+                for chunk in chunks:
+                    emb = EmbeddingCreate(
+                        project_id=project_id,
+                        source_type="document",
+                        source_id=document.id,
+                        content=chunk["content"],
+                        chunk_index=chunk["chunk_index"],
+                        embedding=chunk["embedding"],
+                        metadata={"filename": file.filename}
+                    )
+                    await db.create_embedding(user["id"], emb)
+                print(f"[OK] Document uploaded + {len(chunks)} embeddings generated")
+            except Exception as e:
+                print(f"[WARN] Embeddings error: {e}")
 
         return {
-            "id": doc_id,
+            "id": document.id,
             "filename": file.filename,
-            "content": processed_doc.content,
-            "preview": processed_doc.preview,
-            "metadata": processed_doc.metadata.model_dump()
+            "content": processed.content,
+            "preview": processed.preview,
+            "metadata": processed.metadata.model_dump()
         }
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to process document: {str(e)}")
+        print(f"[ERROR] Upload error: {e}")
+        raise HTTPException(500, f"Failed to upload: {str(e)}")
 
-
-@app.get("/api/documents")
-async def list_documents():
-    """
-    Get list of all uploaded documents.
-
-    Returns:
-        List of uploaded documents
-    """
+@app.get("/api/projects/{project_id}/documents")
+async def get_documents(project_id: str, user: dict = Depends(get_current_user)):
     try:
-        documents = [
-            {
-                "id": doc["id"],
-                "filename": doc["filename"],
-                "preview": doc["preview"],
-                "uploaded_at": doc["uploaded_at"]
-            }
-            for doc in state.uploaded_documents.values()
-        ]
-        return {"documents": documents}
-
+        docs = await db.get_project_documents(project_id, user["id"])
+        return {"documents": docs, "total": len(docs)}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to list documents: {str(e)}")
-
+        raise HTTPException(500, str(e))
 
 @app.get("/api/documents/{doc_id}")
-async def get_document(doc_id: str):
-    """
-    Get a specific document by ID.
-
-    Args:
-        doc_id: Document ID
-
-    Returns:
-        Document details with full content
-    """
+async def get_document(doc_id: str, user: dict = Depends(get_current_user)):
     try:
-        if doc_id not in state.uploaded_documents:
-            raise HTTPException(status_code=404, detail="Document not found")
-
-        return state.uploaded_documents[doc_id]
-
+        doc = await db.get_document(doc_id, user["id"])
+        if not doc:
+            raise HTTPException(404, "Document not found")
+        return doc
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get document: {str(e)}")
+        raise HTTPException(500, str(e))
 
+# ==================== Flashcards ====================
 
-# ==================== Note Structuring & Chat Endpoints ====================
-
-@app.post("/api/notes/structure")
-async def structure_note(request: StructureNoteRequest):
-    """
-    Structure a note using AI - converts unstructured text into organized content.
-
-    Args:
-        request: Contains note_id and content to structure
-
-    Returns:
-        Structured note content with headers, sections, and formatting
-    """
+@app.post("/api/flashcards/generate")
+async def generate_flashcards(
+    request: FlashcardGenerationRequest,
+    project_id: str,
+    user: dict = Depends(get_current_user)
+):
     try:
-        if not state.api_key:
-            raise HTTPException(
-                status_code=500,
-                detail="Gemini API key not configured. Set GEMINI_API_KEY environment variable."
+        api_key = os.getenv("GEMINI_API_KEY")
+        if not api_key:
+            raise HTTPException(500, "Gemini API key not configured")
+
+        difficulty = DifficultyLevel(request.difficulty_filter) if request.difficulty_filter else None
+        generator = AIContentGenerator(api_key=api_key)
+
+        response = generator.generate_flashcards(
+            content=request.content,
+            num_cards=request.num_cards,
+            difficulty_filter=difficulty
+        )
+
+        # Save to database
+        for card in response.flashcards:
+            card_data = FlashcardCreate(
+                project_id=project_id,
+                front=card.front,
+                back=card.back,
+                tags=card.tags,
+                difficulty=card.difficulty.value,
+                source_type="manual"
             )
+            await db.create_flashcard(user["id"], card_data)
 
-        generator = AIContentGenerator(api_key=state.api_key)
-        structured_content = generator.structure_note(request.content)
-
-        return {
-            "note_id": request.note_id,
-            "structured_content": structured_content,
-            "message": "Note structured successfully"
-        }
-
+        return response
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to structure note: {str(e)}")
+        raise HTTPException(500, str(e))
 
+@app.get("/api/projects/{project_id}/flashcards")
+async def get_flashcards(project_id: str, user: dict = Depends(get_current_user)):
+    try:
+        cards = await db.get_project_flashcards(project_id, user["id"])
+        return {"flashcards": cards, "total": len(cards)}
+    except Exception as e:
+        raise HTTPException(500, str(e))
+
+@app.get("/api/projects/{project_id}/flashcards/due")
+async def get_due(project_id: str, limit: int = 20, user: dict = Depends(get_current_user)):
+    try:
+        due_cards = await db.get_due_flashcards(project_id, user["id"], limit)
+        return {"due_cards": due_cards, "total_due": len(due_cards)}
+    except Exception as e:
+        raise HTTPException(500, str(e))
+
+@app.post("/api/flashcards/review")
+async def review(request: ReviewFlashcardRequest, user: dict = Depends(get_current_user)):
+    try:
+        card = await db.get_flashcard(request.flashcard_id, user["id"])
+        if not card:
+            raise HTTPException(404, "Flashcard not found")
+
+        # Convert to FlashCard model for SM-2
+        fc = FlashCard(
+            id=card.id,
+            front=card.front,
+            back=card.back,
+            difficulty=DifficultyLevel(card.difficulty),
+            tags=card.tags,
+            interval=card.interval,
+            repetitions=card.repetitions,
+            ease_factor=card.easiness_factor,
+            last_reviewed_at=card.last_review_date,
+            next_review_date=card.next_review_date
+        )
+
+        # SM-2 processing
+        updated = sm2.process_review(fc, request.response_quality)
+
+        # Update database
+        update_data = {
+            "easiness_factor": updated.ease_factor,
+            "interval": updated.interval,
+            "repetitions": updated.repetitions,
+            "next_review_date": updated.next_review_date.isoformat(),
+            "last_review_date": datetime.now().isoformat()
+        }
+        await db.update_flashcard(request.flashcard_id, user["id"], update_data)
+
+        # Log review
+        review_data = FlashcardReviewCreate(
+            flashcard_id=request.flashcard_id,
+            quality=request.response_quality,
+            time_taken_seconds=request.time_spent_seconds
+        )
+        await db.create_flashcard_review(user["id"], review_data, update_data)
+
+        stats = sm2.get_review_stats(updated)
+        return {
+            "flashcard": updated.model_dump(),
+            "stats": stats,
+            "message": f"Next review in {stats['days_until_review']} days"
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(500, str(e))
+
+# ==================== Chat with RAG ====================
 
 @app.post("/api/chat")
-async def chat_with_ai(request: ChatRequest):
-    """
-    Chat with AI about documents, notes, or general questions.
-
-    Args:
-        request: Contains message, optional context, source_id, and file_uri
-
-    Returns:
-        AI response and optionally updated note content
-    """
+async def chat(request: ChatRequest, user: dict = Depends(get_current_user)):
     try:
-        if not state.api_key:
-            raise HTTPException(
-                status_code=500,
-                detail="Gemini API key not configured. Set GEMINI_API_KEY environment variable."
-            )
+        api_key = os.getenv("GEMINI_API_KEY")
+        if not api_key:
+            raise HTTPException(500, "Gemini API not configured")
 
-        generator = AIContentGenerator(api_key=state.api_key)
-        response = generator.chat(
-            message=request.message,
-            context=request.context,
-            source_id=request.source_id
+        # Generate query embedding
+        query_emb = embeddings_service.generate_embedding(request.message)
+
+        # Search for context
+        context_results = await db.search_embeddings(
+            project_id=request.project_id,
+            query_embedding=query_emb,
+            threshold=0.7,
+            limit=5
         )
+
+        # Build context
+        context_text = "\n\n".join([
+            f"[{r['source_type']}] {r['content']}"
+            for r in context_results
+        ])
+
+        # Generate response
+        generator = AIContentGenerator(api_key=api_key)
+        prompt = f"""You are a study assistant. Use this context:
+
+Context:
+{context_text}
+
+Question: {request.message}
+
+Answer:"""
+
+        response = generator.chat(message=prompt, context=None, source_id=None)
+
+        # Store messages
+        user_msg = ChatMessageCreate(
+            project_id=request.project_id,
+            role="user",
+            content=request.message
+        )
+        await db.create_chat_message(user["id"], user_msg)
+
+        assistant_msg = ChatMessageCreate(
+            project_id=request.project_id,
+            role="assistant",
+            content=response["reply"],
+            context_sources=[
+                {"source_type": r["source_type"], "source_id": r["source_id"]}
+                for r in context_results
+            ]
+        )
+        await db.create_chat_message(user["id"], assistant_msg)
 
         return {
             "reply": response["reply"],
-            "updated_note_content": response.get("updated_note_content"),
-            "message": "Chat response generated"
+            "context_sources": context_results,
+            "context_used": len(context_results) > 0
+        }
+    except Exception as e:
+        raise HTTPException(500, str(e))
+
+
+# ==================== Quiz Endpoints ====================
+
+@app.post("/api/quiz/generate")
+async def generate_quiz(
+    request: dict,
+    user: dict = Depends(get_current_user)
+):
+    """Generate quiz questions from content using AI"""
+    try:
+        content = request.get("content", "")
+        num_questions = request.get("num_questions", 5)
+        difficulty = request.get("difficulty", "medium")
+        project_id = request.get("project_id")
+
+        if not project_id:
+            raise HTTPException(400, "project_id is required")
+
+        if not content or len(content) < 50:
+            raise HTTPException(400, "Content must be at least 50 characters")
+
+        # Generate quiz using AI
+        prompt = f"""Generate {num_questions} multiple-choice quiz questions from this content.
+Difficulty: {difficulty}
+
+Content:
+{content}
+
+Return a JSON array of questions with this exact format:
+[
+  {{
+    "question": "What is...",
+    "options": ["Option A", "Option B", "Option C", "Option D"],
+    "correct_answer": "Option A",
+    "explanation": "Brief explanation..."
+  }}
+]
+
+Make sure:
+- Questions test understanding, not just memorization
+- All 4 options are plausible
+- Explanations are clear and concise
+"""
+
+        response = ai_generator.generate_content(prompt)
+
+        # Parse JSON from response
+        import json
+        import re
+
+        # Extract JSON from markdown code blocks if present
+        json_match = re.search(r'```(?:json)?\s*(\[.*?\])\s*```', response["reply"], re.DOTALL)
+        if json_match:
+            json_str = json_match.group(1)
+        else:
+            # Try to find JSON array directly
+            json_match = re.search(r'\[.*\]', response["reply"], re.DOTALL)
+            if json_match:
+                json_str = json_match.group(0)
+            else:
+                raise HTTPException(500, "Failed to parse AI response")
+
+        questions_data = json.loads(json_str)
+
+        # Save questions to database
+        from core.db_models import QuizQuestionCreate
+        saved_questions = []
+
+        for q_data in questions_data[:num_questions]:
+            question = QuizQuestionCreate(
+                project_id=project_id,
+                source_type="manual",
+                question=q_data["question"],
+                options=q_data["options"],
+                correct_answer=q_data["correct_answer"],
+                explanation=q_data.get("explanation", ""),
+                difficulty=difficulty
+            )
+            saved = await db.create_quiz_question(user["id"], question)
+            saved_questions.append(saved)
+
+        # Format response for frontend
+        quiz_id = f"quiz_{saved_questions[0].id}"
+        formatted_questions = []
+
+        for q in saved_questions:
+            # Find correct answer index
+            correct_index = q.options.index(q.correct_answer) if q.correct_answer in q.options else 0
+
+            formatted_questions.append({
+                "id": q.id,
+                "question": q.question,
+                "options": q.options,
+                "correct_answer_index": correct_index,
+                "explanation": q.explanation
+            })
+
+        return {
+            "quiz_id": quiz_id,
+            "questions": formatted_questions
         }
 
+    except json.JSONDecodeError as e:
+        raise HTTPException(500, f"Failed to parse AI response: {str(e)}")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to generate chat response: {str(e)}")
+        raise HTTPException(500, f"Failed to generate quiz: {str(e)}")
 
 
-# ==================== Health Check ===================="
+@app.post("/api/quiz/submit")
+async def submit_quiz(request: dict, user: dict = Depends(get_current_user)):
+    """Submit quiz answers (currently just validates)"""
+    try:
+        quiz_id = request.get("quiz_id")
+        answers = request.get("answers", [])
 
-@app.get("/")
-async def root():
-    """API health check"""
-    return {
-        "status": "online",
-        "message": "AI Study App API is running",
-        "version": "1.0.0"
-    }
+        # For now, just acknowledge submission
+        # Later can add analytics/tracking
 
-
-@app.get("/health")
-async def health_check():
-    """Detailed health check"""
-    return {
-        "status": "healthy",
-        "api_key_configured": state.api_key is not None,
-        "flashcards_count": len(state.flashcards),
-        "interactions_logged": state.logger.get_statistics()['total_interactions']
-    }
+        return {
+            "quiz_id": quiz_id,
+            "message": "Quiz submitted successfully"
+        }
+    except Exception as e:
+        raise HTTPException(500, str(e))
 
 
-# ==================== Run Server ====================
+# ==================== Match Quiz Endpoints ====================
+
+@app.post("/api/match/generate")
+async def generate_match_quiz(
+    request: dict,
+    user: dict = Depends(get_current_user)
+):
+    """Generate match pairs from content or flashcards"""
+    try:
+        content = request.get("content", "")
+        num_pairs = request.get("num_pairs", 5)
+        difficulty = request.get("difficulty", "medium")
+        project_id = request.get("project_id")
+        use_flashcards = not content  # If no content, use flashcards
+
+        if not project_id:
+            raise HTTPException(400, "project_id is required")
+
+        pairs_to_save = []
+
+        if use_flashcards:
+            # Get flashcards from database
+            flashcards = await db.get_project_flashcards(project_id, user["id"])
+
+            if not flashcards:
+                raise HTTPException(400, "No flashcards found in this project")
+
+            # Use flashcards as match pairs
+            import random
+            selected = random.sample(flashcards, min(num_pairs, len(flashcards)))
+
+            from core.db_models import MatchPairCreate
+            for fc in selected:
+                pair = MatchPairCreate(
+                    project_id=project_id,
+                    source_type="flashcard",
+                    source_id=fc.id,
+                    term=fc.front,
+                    definition=fc.back
+                )
+                pairs_to_save.append(pair)
+
+        else:
+            # Generate pairs from content using AI
+            if len(content) < 50:
+                raise HTTPException(400, "Content must be at least 50 characters")
+
+            prompt = f"""Generate {num_pairs} term-definition pairs from this content.
+Difficulty: {difficulty}
+
+Content:
+{content}
+
+Return a JSON array with this exact format:
+[
+  {{
+    "term": "Key term or concept",
+    "definition": "Clear, concise definition"
+  }}
+]
+
+Make sure:
+- Terms are important concepts from the content
+- Definitions are accurate and concise
+- Pairs are suitable for a matching quiz
+"""
+
+            response = ai_generator.generate_content(prompt)
+
+            # Parse JSON from response
+            import json
+            import re
+
+            json_match = re.search(r'```(?:json)?\s*(\[.*?\])\s*```', response["reply"], re.DOTALL)
+            if json_match:
+                json_str = json_match.group(1)
+            else:
+                json_match = re.search(r'\[.*\]', response["reply"], re.DOTALL)
+                if json_match:
+                    json_str = json_match.group(0)
+                else:
+                    raise HTTPException(500, "Failed to parse AI response")
+
+            pairs_data = json.loads(json_str)
+
+            from core.db_models import MatchPairCreate
+            for p_data in pairs_data[:num_pairs]:
+                pair = MatchPairCreate(
+                    project_id=project_id,
+                    source_type="manual",
+                    term=p_data["term"],
+                    definition=p_data["definition"]
+                )
+                pairs_to_save.append(pair)
+
+        # Save all pairs to database
+        saved_pairs = []
+        for pair in pairs_to_save:
+            saved = await db.create_match_pair(user["id"], pair)
+            saved_pairs.append(saved)
+
+        # Format response for frontend
+        match_quiz_id = f"match_{saved_pairs[0].id}"
+        formatted_pairs = [
+            {
+                "id": p.id,
+                "prompt": p.term,
+                "answer": p.definition,
+                "tags": []
+            }
+            for p in saved_pairs
+        ]
+
+        return {
+            "match_quiz_id": match_quiz_id,
+            "pairs": formatted_pairs
+        }
+
+    except json.JSONDecodeError as e:
+        raise HTTPException(500, f"Failed to parse AI response: {str(e)}")
+    except Exception as e:
+        raise HTTPException(500, f"Failed to generate match quiz: {str(e)}")
+
+
+@app.post("/api/match/submit")
+async def submit_match_quiz(request: dict, user: dict = Depends(get_current_user)):
+    """Submit match quiz answers (currently just validates)"""
+    try:
+        match_quiz_id = request.get("match_quiz_id")
+        answers = request.get("answers", [])
+
+        # For now, just acknowledge submission
+        # Later can add analytics/tracking
+
+        return {
+            "match_quiz_id": match_quiz_id,
+            "message": "Match quiz submitted successfully"
+        }
+    except Exception as e:
+        raise HTTPException(500, str(e))
+
+
+# ==================== Run ====================
 
 if __name__ == "__main__":
     import uvicorn
 
-    # Load API key from environment
-    from dotenv import load_dotenv
-    load_dotenv()
+    print("=" * 70)
+    print("Notiq API v2.0 - Supabase Edition")
+    print("=" * 70)
+    print("Health: http://localhost:8000/health")
+    print("Docs: http://localhost:8000/docs")
+    print("Test DB: http://localhost:8000/api/test-db")
+    print("=" * 70)
 
-    print("Starting AI Study App API...")
-    print("API Documentation: http://localhost:8000/docs")
-    print("Health Check: http://localhost:8000/health")
+    # Check config
+    supabase_url = os.getenv("SUPABASE_URL")
+    if supabase_url:
+        print(f"[OK] Supabase: {supabase_url[:40]}...")
+    else:
+        print("[WARN] SUPABASE_URL not set!")
 
-    uvicorn.run(
-        "main:app",
-        host="0.0.0.0",
-        port=8000,
-        reload=True  # Auto-reload on code changes
-    )
+    if os.getenv("SUPABASE_ANON_KEY"):
+        print("[OK] Supabase key configured")
+    else:
+        print("[WARN] SUPABASE_ANON_KEY not set!")
+
+    if os.getenv("GEMINI_API_KEY"):
+        print("[OK] Gemini API key configured")
+    else:
+        print("[WARN] GEMINI_API_KEY not set!")
+
+    print("=" * 70)
+
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

@@ -13,7 +13,9 @@
       "Bash(ping:*)",
       "Bash(start /B python:*)",
       "Bash(timeout:*)",
-      "Bash(pip install:*)"
+      "Bash(pip install:*)",
+      "Bash(taskkill:*)",
+      "Bash(copy:*)"
     ],
     "deny": [],
     "ask": []

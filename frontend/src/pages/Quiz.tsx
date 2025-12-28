@@ -94,6 +94,7 @@ export default function Quiz() {
       content,
       num_questions: numQuestions,
       difficulty,
+      project_id: projectId,
     });
   };
 
