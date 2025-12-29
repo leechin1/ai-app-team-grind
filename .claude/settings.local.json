@@ -16,7 +16,8 @@
       "Bash(pip install:*)",
       "Bash(taskkill:*)",
       "Bash(copy:*)",
-      "Bash(where:*)"
+      "Bash(where:*)",
+      "Bash(start /B npm run dev)"
     ],
     "deny": [],
     "ask": []

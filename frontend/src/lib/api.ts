@@ -132,9 +132,10 @@ export const projectAPI = {
    * Get all projects for the current user
    */
   async list() {
-    return fetchAPI<Project[]>('/api/projects', {
+    const response = await fetchAPI<{ projects: Project[] }>('/api/projects', {
       method: 'GET',
     });
+    return response.projects;
   },
 
   /**
