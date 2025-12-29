@@ -10,6 +10,11 @@ import os
 import sys
 from datetime import datetime, timedelta
 import asyncio
+from dotenv import load_dotenv
+
+# Load .env from parent directory (root of project)
+env_path = os.path.join(os.path.dirname(__file__), '..', '.env')
+load_dotenv(env_path)
 
 from core.supabase_client import db
 from core.db_models import (
