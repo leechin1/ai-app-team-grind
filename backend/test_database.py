@@ -1,13 +1,9 @@
 """
 Test script to populate Supabase with sample data
-Run this after disabling RLS to verify database integration
+Run this from the backend directory after disabling RLS
 
 USAGE:
     cd backend
-    python ../test_database.py
-
-OR:
-    python -m pip install supabase
     python test_database.py
 """
 import os
@@ -15,35 +11,12 @@ import sys
 from datetime import datetime, timedelta
 import asyncio
 
-# Check if we're in the backend directory
-if os.path.basename(os.getcwd()) != 'backend':
-    # Add backend to path
-    backend_path = os.path.join(os.path.dirname(__file__), 'backend')
-    if os.path.exists(backend_path):
-        sys.path.insert(0, backend_path)
-        # Change to backend directory for imports to work
-        os.chdir(backend_path)
-    else:
-        print("❌ Error: Cannot find backend directory")
-        print("Please run this script from the project root or backend directory")
-        sys.exit(1)
-
-try:
-    from core.supabase_client import db
-    from core.db_models import (
-        ProjectCreate,
-        NoteCreate,
-        FlashcardCreate,
-        EmbeddingCreate
-    )
-except ImportError as e:
-    print(f"❌ Import Error: {e}")
-    print("\nPlease make sure you're in the backend directory:")
-    print("  cd backend")
-    print("  python ../test_database.py")
-    print("\nOr install dependencies:")
-    print("  pip install -r requirements_minimal.txt")
-    sys.exit(1)
+from core.supabase_client import db
+from core.db_models import (
+    ProjectCreate,
+    NoteCreate,
+    FlashcardCreate,
+)
 
 # Test user ID (from development mode)
 TEST_USER_ID = "00000000-0000-0000-0000-000000000001"
@@ -74,7 +47,7 @@ async def create_test_project():
 
     try:
         project = ProjectCreate(
-            name="🧪 Test Project - Biology 101",
+            name="Test Project - Biology 101",
             description="Sample project to test Supabase integration",
             icon="🧬",
             color="from-green-500 to-emerald-600"
@@ -225,16 +198,16 @@ async def verify_data(project_id: str):
         print(f"✅ Due for review: {len(due_cards)} flashcards")
 
         print("\n" + "="*60)
-        print("📊 SUMMARY")
+        print("SUMMARY")
         print("="*60)
         print(f"Project ID: {project_id}")
         print(f"Total Notes: {len(notes)}")
         print(f"Total Flashcards: {len(flashcards)}")
         print(f"Due for Review: {len(due_cards)}")
-        print("\n✅ All data created successfully!")
-        print("\n🎯 Next Steps:")
+        print("\nAll data created successfully!")
+        print("\nNext Steps:")
         print("1. Open your frontend app")
-        print("2. You should see '🧪 Test Project - Biology 101'")
+        print("2. You should see 'Test Project - Biology 101'")
         print("3. Go to Review page to see flashcards due for review")
         print("4. Check Notes to see the sample notes")
         print("="*60)
@@ -247,7 +220,7 @@ async def verify_data(project_id: str):
 
 async def main():
     """Main test function"""
-    print("\n🧪 SUPABASE DATABASE TEST SCRIPT")
+    print("\nSUPABASE DATABASE TEST SCRIPT")
     print("="*60)
     print("This script will create test data in your Supabase database")
     print("Make sure you've disabled RLS first!")
