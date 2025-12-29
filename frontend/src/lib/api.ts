@@ -84,6 +84,26 @@ export interface Stats {
   };
 }
 
+// ==================== Project Types ====================
+
+export interface Project {
+  id: string;
+  user_id: string;
+  name: string;
+  description?: string;
+  icon?: string;
+  color?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateProjectRequest {
+  name: string;
+  description?: string;
+  icon?: string;
+  color?: string;
+}
+
 // ==================== Helper Functions ====================
 
 async function fetchAPI<T>(endpoint: string, options?: RequestInit): Promise<T> {
@@ -104,6 +124,57 @@ async function fetchAPI<T>(endpoint: string, options?: RequestInit): Promise<T> 
 
   return response.json();
 }
+
+// ==================== Project API ====================
+
+export const projectAPI = {
+  /**
+   * Get all projects for the current user
+   */
+  async list() {
+    return fetchAPI<Project[]>('/api/projects', {
+      method: 'GET',
+    });
+  },
+
+  /**
+   * Get a specific project by ID
+   */
+  async getById(project_id: string) {
+    return fetchAPI<Project>(`/api/projects/${project_id}`, {
+      method: 'GET',
+    });
+  },
+
+  /**
+   * Create a new project
+   */
+  async create(request: CreateProjectRequest) {
+    return fetchAPI<Project>('/api/projects', {
+      method: 'POST',
+      body: JSON.stringify(request),
+    });
+  },
+
+  /**
+   * Update a project
+   */
+  async update(project_id: string, request: Partial<CreateProjectRequest>) {
+    return fetchAPI<Project>(`/api/projects/${project_id}`, {
+      method: 'PUT',
+      body: JSON.stringify(request),
+    });
+  },
+
+  /**
+   * Delete a project
+   */
+  async delete(project_id: string) {
+    return fetchAPI<{ message: string }>(`/api/projects/${project_id}`, {
+      method: 'DELETE',
+    });
+  },
+};
 
 // ==================== Flashcard API ====================
 
@@ -387,6 +458,7 @@ export const healthAPI = {
 
 // Export default API object
 export default {
+  project: projectAPI,
   flashcard: flashcardAPI,
   quiz: quizAPI,
   match: matchAPI,

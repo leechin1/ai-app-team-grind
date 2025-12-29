@@ -15,7 +15,8 @@
       "Bash(timeout:*)",
       "Bash(pip install:*)",
       "Bash(taskkill:*)",
-      "Bash(copy:*)"
+      "Bash(copy:*)",
+      "Bash(where:*)"
     ],
     "deny": [],
     "ask": []

@@ -32,7 +32,7 @@ from core.db_models import (
     FlashcardCreate,
 )
 
-# Test user ID (from development mode)
+# Test user ID (matches the mock user ID in backend/core/auth.py for development)
 TEST_USER_ID = "00000000-0000-0000-0000-000000000001"
 
 
@@ -41,27 +41,34 @@ async def create_test_user():
     print("\n" + "="*60)
     print("CREATING TEST USER PROFILE")
     print("="*60)
+    print(f"Using test user ID: {TEST_USER_ID}")
 
     try:
         # Check if user already exists by ID
         result = db.client.table("profiles").select("*").eq("id", TEST_USER_ID).execute()
 
         if result.data:
-            print(f"[OK] Test user already exists (by ID): {result.data[0]['email']}")
+            print(f"[OK] Test user already exists: {result.data[0]['email']}")
             return True
 
-        # Check if email already exists (but with different ID)
+        # Check if email already exists with different ID (from previous runs)
         result = db.client.table("profiles").select("*").eq("email", "test@notiq.app").execute()
 
         if result.data:
-            print(f"[OK] Test user exists with email test@notiq.app")
-            print(f"[INFO] Using existing user ID: {result.data[0]['id']}")
-            # Update TEST_USER_ID to match existing user
-            global TEST_USER_ID
-            TEST_USER_ID = result.data[0]['id']
-            return True
+            old_user_id = result.data[0]['id']
+            print(f"[INFO] Deleting old test user with different ID: {old_user_id}")
+            # Delete old user and their data
+            db.client.table("flashcard_reviews").delete().eq("user_id", old_user_id).execute()
+            db.client.table("flashcards").delete().eq("user_id", old_user_id).execute()
+            db.client.table("documents").delete().eq("user_id", old_user_id).execute()
+            db.client.table("notes").delete().eq("user_id", old_user_id).execute()
+            db.client.table("projects").delete().eq("user_id", old_user_id).execute()
+            db.client.table("chat_messages").delete().eq("user_id", old_user_id).execute()
+            db.client.table("embeddings").delete().eq("user_id", old_user_id).execute()
+            db.client.table("profiles").delete().eq("id", old_user_id).execute()
+            print(f"[OK] Deleted old test user and associated data")
 
-        # Create test user profile
+        # Create test user profile with correct ID
         profile_data = {
             "id": TEST_USER_ID,
             "email": "test@notiq.app",
@@ -69,7 +76,7 @@ async def create_test_user():
         }
 
         result = db.client.table("profiles").insert(profile_data).execute()
-        print(f"[OK] Test user created: test@notiq.app")
+        print(f"[OK] Test user created: test@notiq.app (ID: {TEST_USER_ID})")
         return True
     except Exception as e:
         print(f"[ERROR] Failed to create test user: {e}")
@@ -103,14 +110,13 @@ async def create_test_project():
         project = ProjectCreate(
             name="Test Project - Biology 101",
             description="Sample project to test Supabase integration",
-            icon="🧬",
+            icon="",
             color="from-green-500 to-emerald-600"
         )
 
         created = await db.create_project(TEST_USER_ID, project)
         print(f"[OK] Project created: {created.name}")
         print(f"   ID: {created.id}")
-        print(f"   Icon: {created.icon}")
         return created.id
     except Exception as e:
         print(f"[ERROR] Failed to create project: {e}")
