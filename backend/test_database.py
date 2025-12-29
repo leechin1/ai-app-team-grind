@@ -43,11 +43,22 @@ async def create_test_user():
     print("="*60)
 
     try:
-        # Check if user already exists
+        # Check if user already exists by ID
         result = db.client.table("profiles").select("*").eq("id", TEST_USER_ID).execute()
 
         if result.data:
-            print(f"[OK] Test user already exists: {result.data[0]['email']}")
+            print(f"[OK] Test user already exists (by ID): {result.data[0]['email']}")
+            return True
+
+        # Check if email already exists (but with different ID)
+        result = db.client.table("profiles").select("*").eq("email", "test@notiq.app").execute()
+
+        if result.data:
+            print(f"[OK] Test user exists with email test@notiq.app")
+            print(f"[INFO] Using existing user ID: {result.data[0]['id']}")
+            # Update TEST_USER_ID to match existing user
+            global TEST_USER_ID
+            TEST_USER_ID = result.data[0]['id']
             return True
 
         # Create test user profile
