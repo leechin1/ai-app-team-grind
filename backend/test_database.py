@@ -10,11 +10,20 @@ import os
 import sys
 from datetime import datetime, timedelta
 import asyncio
-from dotenv import load_dotenv
 
-# Load .env from parent directory (root of project)
+# IMPORTANT: Load .env BEFORE importing anything else
+from dotenv import load_dotenv
 env_path = os.path.join(os.path.dirname(__file__), '..', '.env')
 load_dotenv(env_path)
+
+# Verify env loaded
+if not os.getenv("SUPABASE_URL"):
+    print("[ERROR] .env file not loaded or missing SUPABASE_URL")
+    print(f"Tried to load from: {os.path.abspath(env_path)}")
+    sys.exit(1)
+
+print(f"[OK] Loaded .env from: {os.path.abspath(env_path)}")
+print(f"     SUPABASE_URL: {os.getenv('SUPABASE_URL')[:40]}...")
 
 from core.supabase_client import db
 from core.db_models import (
@@ -27,6 +36,35 @@ from core.db_models import (
 TEST_USER_ID = "00000000-0000-0000-0000-000000000001"
 
 
+async def create_test_user():
+    """Create test user profile if it doesn't exist"""
+    print("\n" + "="*60)
+    print("CREATING TEST USER PROFILE")
+    print("="*60)
+
+    try:
+        # Check if user already exists
+        result = db.client.table("profiles").select("*").eq("id", TEST_USER_ID).execute()
+
+        if result.data:
+            print(f"[OK] Test user already exists: {result.data[0]['email']}")
+            return True
+
+        # Create test user profile
+        profile_data = {
+            "id": TEST_USER_ID,
+            "email": "test@notiq.app",
+            "full_name": "Test User"
+        }
+
+        result = db.client.table("profiles").insert(profile_data).execute()
+        print(f"[OK] Test user created: test@notiq.app")
+        return True
+    except Exception as e:
+        print(f"[ERROR] Failed to create test user: {e}")
+        return False
+
+
 async def test_database_connection():
     """Test basic database connectivity"""
     print("\n" + "="*60)
@@ -36,11 +74,11 @@ async def test_database_connection():
     try:
         # Test connection
         result = db.client.table("projects").select("count", count="exact").execute()
-        print(f"✅ Database connected successfully!")
-        print(f"📊 Current projects in database: {result.count}")
+        print(f"[OK] Database connected successfully!")
+        print(f"[INFO] Current projects in database: {result.count}")
         return True
     except Exception as e:
-        print(f"❌ Database connection failed: {e}")
+        print(f"[ERROR] Database connection failed: {e}")
         return False
 
 
@@ -59,12 +97,12 @@ async def create_test_project():
         )
 
         created = await db.create_project(TEST_USER_ID, project)
-        print(f"✅ Project created: {created.name}")
+        print(f"[OK] Project created: {created.name}")
         print(f"   ID: {created.id}")
         print(f"   Icon: {created.icon}")
         return created.id
     except Exception as e:
-        print(f"❌ Failed to create project: {e}")
+        print(f"[ERROR] Failed to create project: {e}")
         return None
 
 
@@ -103,10 +141,10 @@ async def create_test_notes(project_id: str):
                 type=note_data["type"]
             )
             created = await db.create_note(TEST_USER_ID, note)
-            print(f"✅ Note created: {created.title}")
+            print(f"[OK] Note created: {created.title}")
             created_notes.append(created)
         except Exception as e:
-            print(f"❌ Failed to create note '{note_data['title']}': {e}")
+            print(f"[ERROR] Failed to create note '{note_data['title']}': {e}")
 
     return created_notes
 
@@ -168,13 +206,13 @@ async def create_test_flashcards(project_id: str):
                     TEST_USER_ID,
                     {"next_review_date": next_review.isoformat()}
                 )
-                print(f"✅ Flashcard created (DUE FOR REVIEW): {created.front[:50]}...")
+                print(f"[OK] Flashcard created (DUE FOR REVIEW): {created.front[:50]}...")
             else:
-                print(f"✅ Flashcard created (future review): {created.front[:50]}...")
+                print(f"[OK] Flashcard created (future review): {created.front[:50]}...")
 
             created_flashcards.append(created)
         except Exception as e:
-            print(f"❌ Failed to create flashcard: {e}")
+            print(f"[ERROR] Failed to create flashcard: {e}")
 
     return created_flashcards
 
@@ -188,19 +226,19 @@ async def verify_data(project_id: str):
     try:
         # Check projects
         projects = await db.get_user_projects(TEST_USER_ID)
-        print(f"✅ Projects: {len(projects)} found")
+        print(f"[OK] Projects: {len(projects)} found")
 
         # Check notes
         notes = await db.get_project_notes(project_id, TEST_USER_ID)
-        print(f"✅ Notes: {len(notes)} found")
+        print(f"[OK] Notes: {len(notes)} found")
 
         # Check flashcards
         flashcards = await db.get_project_flashcards(project_id, TEST_USER_ID)
-        print(f"✅ Flashcards: {len(flashcards)} found")
+        print(f"[OK] Flashcards: {len(flashcards)} found")
 
         # Check due flashcards
         due_cards = await db.get_due_flashcards(project_id, TEST_USER_ID, limit=20)
-        print(f"✅ Due for review: {len(due_cards)} flashcards")
+        print(f"[OK] Due for review: {len(due_cards)} flashcards")
 
         print("\n" + "="*60)
         print("SUMMARY")
@@ -219,7 +257,7 @@ async def verify_data(project_id: str):
 
         return True
     except Exception as e:
-        print(f"❌ Verification failed: {e}")
+        print(f"[ERROR] Verification failed: {e}")
         return False
 
 
@@ -233,13 +271,18 @@ async def main():
 
     # Test connection
     if not await test_database_connection():
-        print("\n❌ Cannot proceed without database connection")
+        print("\n[ERROR] Cannot proceed without database connection")
+        return
+
+    # Create test user first
+    if not await create_test_user():
+        print("\n[ERROR] Cannot proceed without a test user")
         return
 
     # Create test project
     project_id = await create_test_project()
     if not project_id:
-        print("\n❌ Cannot proceed without a project")
+        print("\n[ERROR] Cannot proceed without a project")
         return
 
     # Create test notes
