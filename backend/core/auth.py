@@ -50,9 +50,9 @@ async def get_current_user(authorization: Optional[str] = Header(None)) -> dict:
     """
     # DEVELOPMENT MODE: Allow access without auth for testing
     if not authorization:
-        # Return mock user for testing
+        # Return mock user for testing (matches existing user in database)
         return {
-            "id": "00000000-0000-0000-0000-000000000001",
+            "id": "0495dca6-fd8a-471a-9a82-0ed3eb2b3b83",
             "email": "test@notiq.app",
             "metadata": {}
         }
