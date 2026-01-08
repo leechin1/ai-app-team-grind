@@ -10,9 +10,11 @@ export interface User {
   avatar?: string;
 }
 
+// IMPORTANT: This ID must match the user in Supabase database
+// and the mock user ID in backend/core/auth.py
 const FAKE_USER: User = {
-  id: "user-demo-123",
-  email: "demo@notiq.app",
+  id: "0495dca6-fd8a-471a-9a82-0ed3eb2b3b83",  // Real Supabase user ID
+  email: "test@notiq.app",
   name: "Demo User",
   avatar: "👤"
 };
