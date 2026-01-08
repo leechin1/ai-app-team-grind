@@ -11,11 +11,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { matchAPI, type MatchPair } from "@/lib/api";
-import { useMutation } from "@tanstack/react-query";
+import { Checkbox } from "@/components/ui/checkbox";
+import { matchAPI, flashcardAPI, type MatchPair, type FlashCard } from "@/lib/api";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 
-type ViewMode = 'setup' | 'playing' | 'results';
+type ViewMode = 'menu' | 'selectFlashcards' | 'playing' | 'results';
 
 interface MatchState {
   match_quiz_id: string;
@@ -32,95 +33,78 @@ export default function MatchQuiz() {
   const navigate = useNavigate();
   const location = useLocation();
   const { projectId } = useParams<{ projectId: string }>();
-  const [viewMode, setViewMode] = useState<ViewMode>('setup');
-  const [useExistingFlashcards, setUseExistingFlashcards] = useState(true);
+  const [viewMode, setViewMode] = useState<ViewMode>('menu');
 
-  // Setup state
-  const [content, setContent] = useState('');
-  const [numPairs, setNumPairs] = useState(5);
-  const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium');
-  const [sourceDocumentId, setSourceDocumentId] = useState<string | null>(null);
-  const [sourceDocumentName, setSourceDocumentName] = useState<string | null>(null);
+  // Selection state
+  const [selectedFlashcards, setSelectedFlashcards] = useState<Set<string>>(new Set());
 
-  // Check if content was passed from Upload page
-  useEffect(() => {
-    const state = location.state as any;
-    const uploadedContent = state?.content;
-    const documentId = state?.documentId;
-    const documentName = state?.documentName;
+  // Fetch all flashcards for selection
+  const { data: flashcardsData, isLoading: flashcardsLoading } = useQuery({
+    queryKey: ['flashcards', projectId],
+    queryFn: () => {
+      if (!projectId) throw new Error("No project selected");
+      return flashcardAPI.list(projectId);
+    },
+    enabled: !!projectId,
+  });
 
-    if (uploadedContent) {
-      setContent(uploadedContent);
-      setUseExistingFlashcards(false);
-      if (documentId) {
-        setSourceDocumentId(documentId);
-        setSourceDocumentName(documentName);
-      }
-      toast.info('PDF content loaded! Ready to generate match quiz.');
-    }
-  }, [location.state]);
+  const allFlashcards = flashcardsData?.flashcards || [];
 
   // Match state
   const [matchState, setMatchState] = useState<MatchState | null>(null);
 
-  // Generate match quiz mutation
-  const generateMutation = useMutation({
-    mutationFn: (data: { content: string; num_pairs: number; difficulty: string }) => {
-      if (!projectId) {
-        throw new Error("No project selected");
-      }
-      return matchAPI.generate(data, projectId);
-    },
-    onSuccess: (data) => {
-      // Shuffle answers
-      const shuffledAnswers = data.pairs
-        .map((pair, index) => ({ index, text: pair.answer }))
-        .sort(() => Math.random() - 0.5);
-
-      setMatchState({
-        match_quiz_id: data.match_quiz_id,
-        pairs: data.pairs,
-        shuffledAnswers,
-        matches: new Map(),
-        selectedPrompt: null,
-        selectedAnswer: null,
-        startTime: Date.now(),
-        endTime: null,
-      });
-      setViewMode('playing');
-      toast.success(`Match quiz generated with ${data.pairs.length} pairs!`);
-    },
-    onError: (error: Error) => {
-      toast.error(`Failed to generate match quiz: ${error.message}`);
-    },
-  });
-
-  // Submit match quiz mutation
-  const submitMutation = useMutation({
-    mutationFn: (data: { match_quiz_id: string; answers: any[] }) =>
-      matchAPI.submit(data.match_quiz_id, data.answers),
-    onSuccess: () => {
-      toast.success('Match quiz submitted successfully!');
-    },
-    onError: (error: Error) => {
-      toast.error(`Failed to submit match quiz: ${error.message}`);
-    },
-  });
-
-  const handleGenerate = () => {
-    if (!useExistingFlashcards && !content.trim()) {
-      toast.error('Please enter some content or use existing flashcards');
+  // Start game with selected flashcards
+  const handleStartMatch = () => {
+    if (selectedFlashcards.size === 0) {
+      toast.error('Please select at least one flashcard');
       return;
     }
 
-    generateMutation.mutate({
-      content: useExistingFlashcards ? '' : content,
-      num_pairs: numPairs,
-      difficulty,
-      project_id: projectId,
-      source_id: sourceDocumentId || undefined,
-      source_name: sourceDocumentName || undefined,
+    // Convert selected flashcards to match pairs
+    const selectedCards = allFlashcards.filter(card => selectedFlashcards.has(card.id));
+    const pairs: MatchPair[] = selectedCards.map(card => ({
+      id: card.id,
+      prompt: card.front,
+      answer: card.back,
+      tags: card.tags || [],
+    }));
+
+    // Shuffle answers
+    const shuffledAnswers = pairs
+      .map((pair, index) => ({ index, text: pair.answer }))
+      .sort(() => Math.random() - 0.5);
+
+    setMatchState({
+      match_quiz_id: `match_${Date.now()}`,
+      pairs,
+      shuffledAnswers,
+      matches: new Map(),
+      selectedPrompt: null,
+      selectedAnswer: null,
+      startTime: Date.now(),
+      endTime: null,
     });
+    setViewMode('playing');
+    toast.success(`Match quiz started with ${pairs.length} pairs!`);
+  };
+
+  // Selection handlers
+  const handleToggleFlashcard = (cardId: string) => {
+    const newSelection = new Set(selectedFlashcards);
+    if (newSelection.has(cardId)) {
+      newSelection.delete(cardId);
+    } else {
+      newSelection.add(cardId);
+    }
+    setSelectedFlashcards(newSelection);
+  };
+
+  const handleSelectAll = () => {
+    if (selectedFlashcards.size === allFlashcards.length) {
+      setSelectedFlashcards(new Set());
+    } else {
+      setSelectedFlashcards(new Set(allFlashcards.map(c => c.id)));
+    }
   };
 
   const handlePromptClick = (index: number) => {
@@ -236,98 +220,115 @@ export default function MatchQuiz() {
   return (
     <ProjectLayout>
       <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Setup View */}
-        {viewMode === 'setup' && (
+        {/* Menu View */}
+        {viewMode === 'menu' && (
           <div className="space-y-6">
             <div>
-              <h1 className="text-3xl font-bold mb-2">Create a Match Quiz</h1>
+              <h1 className="text-3xl font-bold mb-2">Match Quiz</h1>
               <p className="text-muted-foreground">
                 Match terms with their definitions in this interactive game
               </p>
             </div>
 
-            <Card>
-              <CardContent className="pt-6 space-y-4">
-                <div className="flex items-center space-x-2 mb-4">
-                  <input
-                    type="checkbox"
-                    id="use-flashcards"
-                    checked={useExistingFlashcards}
-                    onChange={(e) => setUseExistingFlashcards(e.target.checked)}
-                    className="w-4 h-4"
-                  />
-                  <Label htmlFor="use-flashcards" className="cursor-pointer">
-                    Use existing flashcards (recommended)
-                  </Label>
+            <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => setViewMode('selectFlashcards')}>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <Zap className="w-8 h-8 text-primary" />
+                  <Badge className="bg-primary">{allFlashcards.length} cards</Badge>
+                </div>
+                <CardTitle>Start Match Quiz</CardTitle>
+                <CardDescription>
+                  Select flashcards to create a matching game
+                </CardDescription>
+              </CardHeader>
+            </Card>
+          </div>
+        )}
+
+        {/* Select Flashcards View */}
+        {viewMode === 'selectFlashcards' && (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-2xl font-bold">Select Flashcards</h2>
+                <p className="text-muted-foreground">
+                  Choose flashcards to include in your match quiz
+                </p>
+              </div>
+              <Button variant="outline" onClick={() => setViewMode('menu')}>
+                Back
+              </Button>
+            </div>
+
+            {flashcardsLoading ? (
+              <Card>
+                <CardContent className="py-12 text-center">
+                  <RotateCw className="w-12 h-12 animate-spin mx-auto mb-4 text-muted-foreground" />
+                  <p className="text-muted-foreground">Loading flashcards...</p>
+                </CardContent>
+              </Card>
+            ) : allFlashcards.length === 0 ? (
+              <Card>
+                <CardContent className="py-12 text-center">
+                  <p className="text-muted-foreground mb-4">
+                    No flashcards available. Create some flashcards first!
+                  </p>
+                  <Button onClick={() => navigate(`/project/${projectId}/flashcards`)}>
+                    Go to Flashcards
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : (
+              <>
+                <div className="flex items-center justify-between">
+                  <Button variant="outline" size="sm" onClick={handleSelectAll}>
+                    {selectedFlashcards.size === allFlashcards.length ? 'Deselect All' : 'Select All'}
+                  </Button>
+                  <div className="text-sm text-muted-foreground">
+                    {selectedFlashcards.size} selected
+                  </div>
                 </div>
 
-                {!useExistingFlashcards && (
-                  <div>
-                    <Label htmlFor="content">Study Material</Label>
-                    <Textarea
-                      id="content"
-                      placeholder="Paste your notes, lecture content, or study material here..."
-                      value={content}
-                      onChange={(e) => setContent(e.target.value)}
-                      rows={12}
-                      className="mt-2"
-                    />
-                    <p className="text-sm text-muted-foreground mt-1">
-                      {content.length} characters
-                    </p>
-                  </div>
-                )}
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="num-pairs">Number of Pairs</Label>
-                    <Input
-                      id="num-pairs"
-                      type="number"
-                      min="1"
-                      max="15"
-                      value={numPairs}
-                      onChange={(e) => setNumPairs(parseInt(e.target.value) || 5)}
-                      className="mt-2"
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="difficulty">Difficulty</Label>
-                    <Select value={difficulty} onValueChange={(v) => setDifficulty(v as any)}>
-                      <SelectTrigger id="difficulty" className="mt-2">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="easy">Easy</SelectItem>
-                        <SelectItem value="medium">Medium</SelectItem>
-                        <SelectItem value="hard">Hard</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+                <div className="space-y-2">
+                  {allFlashcards.map((card) => (
+                    <Card key={card.id} className="hover:bg-accent/50 transition-colors">
+                      <CardContent className="py-4">
+                        <div className="flex items-start gap-4">
+                          <Checkbox
+                            checked={selectedFlashcards.has(card.id)}
+                            onCheckedChange={() => handleToggleFlashcard(card.id)}
+                          />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-start justify-between gap-4">
+                              <div className="flex-1">
+                                <p className="font-medium">{card.front}</p>
+                                <p className="text-sm text-muted-foreground mt-1">{card.back}</p>
+                              </div>
+                              <div className="text-right flex-shrink-0">
+                                <Badge variant="outline" className="text-xs">
+                                  {card.source_name || 'Manual'}
+                                </Badge>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
                 </div>
 
-                <div className="flex gap-2 pt-4">
+                <div className="flex justify-end">
                   <Button
-                    onClick={handleGenerate}
-                    disabled={generateMutation.isPending || (!useExistingFlashcards && !content.trim())}
-                    className="flex-1"
+                    onClick={handleStartMatch}
+                    disabled={selectedFlashcards.size === 0}
+                    size="lg"
                   >
-                    {generateMutation.isPending ? (
-                      <>
-                        <RotateCw className="w-4 h-4 mr-2 animate-spin" />
-                        Generating...
-                      </>
-                    ) : (
-                      <>
-                        <Play className="w-4 h-4 mr-2" />
-                        Generate Match Quiz
-                      </>
-                    )}
+                    <Play className="w-4 h-4 mr-2" />
+                    Start Match Quiz ({selectedFlashcards.size} pairs)
                   </Button>
                 </div>
-              </CardContent>
-            </Card>
+              </>
+            )}
           </div>
         )}
 

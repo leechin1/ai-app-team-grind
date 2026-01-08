@@ -589,6 +589,16 @@ async def generate_quiz(
         raise HTTPException(500, f"Failed to generate quiz: {str(e)}")
 
 
+@app.get("/api/projects/{project_id}/quiz-questions")
+async def get_quiz_questions(project_id: str, user: dict = Depends(get_current_user)):
+    """Get all quiz questions for a project"""
+    try:
+        questions = await db.get_project_quiz_questions(project_id, user["id"])
+        return {"questions": questions, "total": len(questions)}
+    except Exception as e:
+        raise HTTPException(500, str(e))
+
+
 @app.post("/api/quiz/submit")
 async def submit_quiz(request: dict, user: dict = Depends(get_current_user)):
     """Submit quiz answers (currently just validates)"""

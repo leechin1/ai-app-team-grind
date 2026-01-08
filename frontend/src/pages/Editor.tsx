@@ -1,23 +1,16 @@
 import { useState, useEffect } from "react";
-import { useParams } from "react-router-dom";
-import { Clock } from "lucide-react";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
+import { Clock, Save } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 import ProjectLayout from "@/components/ProjectLayout";
 import ReactQuill from "react-quill";
 import "react-quill/dist/quill.snow.css";
 import "@/styles/quill-custom.css";
-
-// Mock data for MVP
-const MOCK_NOTES: Record<string, { title: string; course: string; dueDate: string; type: string; content: string }> = {
-  "1": {
-    title: "Optimization Algorithms Overview",
-    course: "Computer Science 301",
-    dueDate: "2025-12-30",
-    type: "Study Notes",
-    content: "<h2>Introduction to Optimization</h2><p>Optimization algorithms are essential for finding the best solution from a set of possible solutions. They are widely used in machine learning, operations research, and many other fields.</p><h3>Key Concepts</h3><ul><li><strong>Objective Function:</strong> The function we want to minimize or maximize</li><li><strong>Constraints:</strong> Limitations on the possible solutions</li><li><strong>Search Space:</strong> The set of all possible solutions</li></ul><h3>Common Algorithms</h3><p>Gradient Descent, Simulated Annealing, Genetic Algorithms, Particle Swarm Optimization...</p>"
-  },
-};
+import { noteAPI } from "@/lib/api";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 
 const modules = {
   toolbar: [
@@ -32,37 +25,126 @@ const modules = {
 };
 
 export default function Editor() {
-  const { projectId } = useParams<{ projectId: string }>();
+  const { projectId, noteId } = useParams<{ projectId: string; noteId?: string }>();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+
   const [title, setTitle] = useState("");
   const [course, setCourse] = useState("");
   const [dueDate, setDueDate] = useState("");
-  const [type, setType] = useState("");
+  const [type, setType] = useState("Study Notes");
   const [content, setContent] = useState("");
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
+  // Load existing note if noteId is provided
+  const { data: existingNote, isLoading } = useQuery({
+    queryKey: ['note', noteId],
+    queryFn: () => {
+      if (!noteId) throw new Error("No note ID");
+      return noteAPI.getById(noteId);
+    },
+    enabled: !!noteId,
+  });
+
+  // Initialize form with existing note data
   useEffect(() => {
-    // Load note from mock data
-    if (projectId && MOCK_NOTES[projectId]) {
-      const note = MOCK_NOTES[projectId];
-      setTitle(note.title);
-      setCourse(note.course);
-      setDueDate(note.dueDate);
-      setType(note.type);
-      setContent(note.content);
+    if (existingNote) {
+      setTitle(existingNote.title);
+      setCourse(existingNote.course || "");
+      setDueDate(existingNote.due_date || "");
+      setType(existingNote.type || "Study Notes");
+      setContent(existingNote.content_html || existingNote.content || "");
+      setLastSaved(new Date(existingNote.updated_at));
+      setHasUnsavedChanges(false);
     }
-  }, [projectId]);
+  }, [existingNote]);
 
-  // Auto-save simulation
+  // Track changes
   useEffect(() => {
-    const timer = setTimeout(() => {
-      if (title || content) {
-        setLastSaved(new Date());
-        // TODO: Call backend to save
-      }
-    }, 2000);
+    if (existingNote && (
+      title !== existingNote.title ||
+      course !== (existingNote.course || "") ||
+      dueDate !== (existingNote.due_date || "") ||
+      type !== (existingNote.type || "Study Notes") ||
+      content !== (existingNote.content_html || existingNote.content || "")
+    )) {
+      setHasUnsavedChanges(true);
+    }
+  }, [title, course, dueDate, type, content, existingNote]);
 
-    return () => clearTimeout(timer);
-  }, [title, course, dueDate, type, content]);
+  // Create note mutation
+  const createMutation = useMutation({
+    mutationFn: () => {
+      if (!projectId) throw new Error("No project ID");
+      return noteAPI.create({
+        project_id: projectId,
+        title: title || "Untitled",
+        content: content,
+        content_html: content,
+        course: course || undefined,
+        due_date: dueDate || undefined,
+        type: type || "Study Notes",
+      });
+    },
+    onSuccess: (data) => {
+      toast.success('Note created successfully!');
+      setLastSaved(new Date());
+      setHasUnsavedChanges(false);
+      queryClient.invalidateQueries({ queryKey: ['notes', projectId] });
+      // Navigate to edit mode with the new note ID
+      navigate(`/project/${projectId}/editor/${data.id}`, { replace: true });
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to create note: ${error.message}`);
+    },
+  });
+
+  // Update note mutation
+  const updateMutation = useMutation({
+    mutationFn: () => {
+      if (!noteId) throw new Error("No note ID");
+      return noteAPI.update(noteId, {
+        title: title || "Untitled",
+        content: content,
+        content_html: content,
+        course: course || undefined,
+        due_date: dueDate || undefined,
+        type: type || undefined,
+      });
+    },
+    onSuccess: () => {
+      toast.success('Note saved successfully!');
+      setLastSaved(new Date());
+      setHasUnsavedChanges(false);
+      queryClient.invalidateQueries({ queryKey: ['note', noteId] });
+      queryClient.invalidateQueries({ queryKey: ['notes', projectId] });
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to save note: ${error.message}`);
+    },
+  });
+
+  const handleSave = () => {
+    if (noteId) {
+      updateMutation.mutate();
+    } else {
+      createMutation.mutate();
+    }
+  };
+
+  const isSaving = createMutation.isPending || updateMutation.isPending;
+
+  if (isLoading && noteId) {
+    return (
+      <ProjectLayout>
+        <div className="flex items-center justify-center h-full">
+          <p className="text-muted-foreground">Loading note...</p>
+        </div>
+      </ProjectLayout>
+    );
+  }
 
   return (
     <ProjectLayout>
@@ -76,7 +158,18 @@ export default function Editor() {
                 <span>Last saved {lastSaved.toLocaleTimeString()}</span>
               </>
             )}
+            {hasUnsavedChanges && !lastSaved && (
+              <span className="text-amber-600">Unsaved changes</span>
+            )}
           </div>
+          <Button
+            onClick={handleSave}
+            disabled={isSaving || (!hasUnsavedChanges && !!noteId)}
+            size="sm"
+          >
+            <Save className="w-4 h-4 mr-2" />
+            {isSaving ? 'Saving...' : noteId ? 'Save Changes' : 'Create Note'}
+          </Button>
         </div>
 
         {/* Editor Container - Centered, 40-50% width */}
@@ -141,12 +234,6 @@ export default function Editor() {
                   placeholder="Start writing your notes..."
                   className="min-h-[500px]"
                 />
-              </div>
-
-              {/* Helper Text */}
-              <div className="mt-8 pt-8 border-t text-sm text-muted-foreground space-y-2">
-                <p>💡 <strong>Tip:</strong> Use ChatIQ to ask questions about your notes</p>
-                <p>🧠 <strong>Tip:</strong> Generate flashcards and quizzes from your content</p>
               </div>
             </div>
           </div>

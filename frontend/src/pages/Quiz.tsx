@@ -13,11 +13,13 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
 import { quizAPI, type QuizQuestion } from "@/lib/api";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 
-type ViewMode = 'setup' | 'taking' | 'results';
+type ViewMode = 'menu' | 'generate' | 'browse' | 'taking' | 'results';
 
 interface QuizState {
   quiz_id: string;
@@ -31,7 +33,7 @@ export default function Quiz() {
   const navigate = useNavigate();
   const location = useLocation();
   const { projectId } = useParams<{ projectId: string }>();
-  const [viewMode, setViewMode] = useState<ViewMode>('setup');
+  const [viewMode, setViewMode] = useState<ViewMode>('menu');
 
   // Setup state
   const [content, setContent] = useState('');
@@ -39,6 +41,21 @@ export default function Quiz() {
   const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium');
   const [sourceDocumentId, setSourceDocumentId] = useState<string | null>(null);
   const [sourceDocumentName, setSourceDocumentName] = useState<string | null>(null);
+
+  // Selection state
+  const [selectedQuestions, setSelectedQuestions] = useState<Set<string>>(new Set());
+
+  // Fetch all quiz questions for selection
+  const { data: questionsData, isLoading: questionsLoading } = useQuery({
+    queryKey: ['quiz-questions', projectId],
+    queryFn: () => {
+      if (!projectId) throw new Error("No project selected");
+      return quizAPI.list(projectId);
+    },
+    enabled: !!projectId,
+  });
+
+  const allQuestions = questionsData?.questions || [];
 
   // Check if content was passed from Upload page
   useEffect(() => {
@@ -53,6 +70,7 @@ export default function Quiz() {
         setSourceDocumentId(documentId);
         setSourceDocumentName(documentName);
       }
+      setViewMode('generate');
       toast.info('PDF content loaded! Ready to generate quiz.');
     }
   }, [location.state]);
@@ -112,6 +130,43 @@ export default function Quiz() {
       source_id: sourceDocumentId || undefined,
       source_name: sourceDocumentName || undefined,
     });
+  };
+
+  // Selection handlers
+  const handleToggleQuestion = (questionId: string) => {
+    const newSelection = new Set(selectedQuestions);
+    if (newSelection.has(questionId)) {
+      newSelection.delete(questionId);
+    } else {
+      newSelection.add(questionId);
+    }
+    setSelectedQuestions(newSelection);
+  };
+
+  const handleSelectAll = () => {
+    if (selectedQuestions.size === allQuestions.length) {
+      setSelectedQuestions(new Set());
+    } else {
+      setSelectedQuestions(new Set(allQuestions.map(q => q.id)));
+    }
+  };
+
+  const handleStartQuiz = () => {
+    if (selectedQuestions.size === 0) {
+      toast.error('Please select at least one question');
+      return;
+    }
+
+    const selectedQs = allQuestions.filter(q => selectedQuestions.has(q.id));
+    const now = Date.now();
+    setQuizState({
+      quiz_id: `quiz_${Date.now()}`,
+      questions: selectedQs,
+      answers: new Array(selectedQs.length).fill(null),
+      currentQuestionIndex: 0,
+      questionStartTimes: new Array(selectedQs.length).fill(now),
+    });
+    setViewMode('taking');
   };
 
   const handleAnswerSelect = (answerIndex: number) => {
@@ -190,13 +245,153 @@ export default function Quiz() {
   return (
     <ProjectLayout>
       <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Setup View */}
-        {viewMode === 'setup' && (
+        {/* Menu View */}
+        {viewMode === 'menu' && (
           <div className="space-y-6">
             <div>
-              <h1 className="text-3xl font-bold mb-2">Create a Quiz</h1>
+              <h1 className="text-3xl font-bold mb-2">Quiz</h1>
               <p className="text-muted-foreground">
-                Generate an AI-powered multiple choice quiz from your study material
+                Test your knowledge with AI-generated multiple choice quizzes
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => setViewMode('browse')}>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <Play className="w-8 h-8 text-primary" />
+                    <Badge className="bg-primary">{allQuestions.length} questions</Badge>
+                  </div>
+                  <CardTitle>Take Quiz</CardTitle>
+                  <CardDescription>
+                    Select quiz questions to test yourself
+                  </CardDescription>
+                </CardHeader>
+              </Card>
+
+              <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => setViewMode('generate')}>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <Target className="w-8 h-8 text-primary" />
+                  </div>
+                  <CardTitle>Generate Quiz</CardTitle>
+                  <CardDescription>
+                    Create new quiz questions from your study material
+                  </CardDescription>
+                </CardHeader>
+              </Card>
+            </div>
+          </div>
+        )}
+
+        {/* Browse View - Select Questions */}
+        {viewMode === 'browse' && (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-2xl font-bold">Select Quiz Questions</h2>
+                <p className="text-muted-foreground">
+                  Choose questions to include in your quiz
+                </p>
+              </div>
+              <Button variant="outline" onClick={() => setViewMode('menu')}>
+                Back
+              </Button>
+            </div>
+
+            {questionsLoading ? (
+              <Card>
+                <CardContent className="py-12 text-center">
+                  <RotateCw className="w-12 h-12 animate-spin mx-auto mb-4 text-muted-foreground" />
+                  <p className="text-muted-foreground">Loading questions...</p>
+                </CardContent>
+              </Card>
+            ) : allQuestions.length === 0 ? (
+              <Card>
+                <CardContent className="py-12 text-center">
+                  <p className="text-muted-foreground mb-4">
+                    No quiz questions available. Generate some questions first!
+                  </p>
+                  <Button onClick={() => setViewMode('generate')}>
+                    Generate Questions
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : (
+              <>
+                <div className="flex items-center justify-between">
+                  <Button variant="outline" size="sm" onClick={handleSelectAll}>
+                    {selectedQuestions.size === allQuestions.length ? 'Deselect All' : 'Select All'}
+                  </Button>
+                  <div className="text-sm text-muted-foreground">
+                    {selectedQuestions.size} selected
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  {allQuestions.map((question) => (
+                    <Card key={question.id} className="hover:bg-accent/50 transition-colors">
+                      <CardContent className="py-4">
+                        <div className="flex items-start gap-4">
+                          <Checkbox
+                            checked={selectedQuestions.has(question.id)}
+                            onCheckedChange={() => handleToggleQuestion(question.id)}
+                          />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-start justify-between gap-4">
+                              <div className="flex-1">
+                                <p className="font-medium">{question.question}</p>
+                                <div className="mt-2 space-y-1">
+                                  {question.options.map((option, i) => (
+                                    <p key={i} className={`text-sm ${i === question.correct_answer_index ? 'text-green-600 dark:text-green-400 font-medium' : 'text-muted-foreground'}`}>
+                                      {String.fromCharCode(65 + i)}. {option}
+                                    </p>
+                                  ))}
+                                </div>
+                                {question.explanation && (
+                                  <p className="text-sm text-muted-foreground mt-2 italic">
+                                    {question.explanation}
+                                  </p>
+                                )}
+                              </div>
+                              <div className="text-right flex-shrink-0">
+                                <Badge variant="outline" className="text-xs mb-2">
+                                  {question.source_name || 'Manual'}
+                                </Badge>
+                                <Badge variant="outline" className="text-xs block">
+                                  {question.difficulty}
+                                </Badge>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+
+                <div className="flex justify-end">
+                  <Button
+                    onClick={handleStartQuiz}
+                    disabled={selectedQuestions.size === 0}
+                    size="lg"
+                  >
+                    <Play className="w-4 h-4 mr-2" />
+                    Start Quiz ({selectedQuestions.size} questions)
+                  </Button>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* Generate View */}
+        {viewMode === 'generate' && (
+          <div className="space-y-6">
+            <div>
+              <h2 className="text-2xl font-bold mb-2">Generate Quiz</h2>
+              <p className="text-muted-foreground">
+                Create AI-powered multiple choice questions from your study material
               </p>
             </div>
 
@@ -263,6 +458,9 @@ export default function Quiz() {
                         Generate Quiz
                       </>
                     )}
+                  </Button>
+                  <Button variant="outline" onClick={() => setViewMode('menu')}>
+                    Cancel
                   </Button>
                 </div>
               </CardContent>

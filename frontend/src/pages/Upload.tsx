@@ -1,11 +1,11 @@
 import { useState, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { FileText, Upload as UploadIcon, File, Check, Brain, Target, Zap, Trash2 } from "lucide-react";
+import { FileText, Upload as UploadIcon, File, Check, Brain, Target, Zap, Trash2, Edit } from "lucide-react";
 import ProjectLayout from "@/components/ProjectLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { documentAPI } from "@/lib/api";
+import { documentAPI, noteAPI } from "@/lib/api";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
@@ -31,6 +31,16 @@ export default function Upload() {
     queryFn: () => {
       if (!projectId) throw new Error("No project selected");
       return documentAPI.list(projectId);
+    },
+    enabled: !!projectId,
+  });
+
+  // Fetch list of notes
+  const { data: notesData } = useQuery({
+    queryKey: ['notes', projectId],
+    queryFn: () => {
+      if (!projectId) throw new Error("No project selected");
+      return noteAPI.list(projectId);
     },
     enabled: !!projectId,
   });
@@ -91,6 +101,21 @@ export default function Upload() {
       toast.error('Failed to load document content');
       console.error('Error loading document:', error);
     }
+  };
+
+  const handleUseNote = (note: any, destination: 'flashcards' | 'quiz' | 'match') => {
+    if (!projectId) return;
+
+    // Strip HTML tags from content_html to get plain text
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = note.content_html || note.content || '';
+    const plainText = tempDiv.textContent || tempDiv.innerText || '';
+
+    navigate(`/project/${projectId}/${destination}`, { state: {
+      content: plainText,
+      documentId: note.id,
+      documentName: note.title
+    } });
   };
 
   return (
@@ -185,6 +210,73 @@ export default function Upload() {
                           variant="outline"
                           size="sm"
                           onClick={() => handleUseExistingDocument(doc, 'match')}
+                        >
+                          <Zap className="w-4 h-4 mr-2" />
+                          Match
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Notes */}
+          {notesData && notesData.notes.length > 0 && (
+            <div>
+              <h2 className="text-xl font-bold mb-4">Your Notes</h2>
+              <div className="grid grid-cols-1 gap-4">
+                {notesData.notes.map((note) => (
+                  <Card key={note.id} className="hover:shadow-lg transition-shadow">
+                    <CardHeader>
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-12 h-12 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                            <FileText className="w-6 h-6 text-blue-500" />
+                          </div>
+                          <div>
+                            <CardTitle className="text-lg">{note.title}</CardTitle>
+                            <CardDescription>
+                              Last modified {new Date(note.updated_at).toLocaleDateString()}
+                            </CardDescription>
+                          </div>
+                        </div>
+                        <Badge variant="outline" className="bg-blue-500/20">
+                          {note.type}
+                        </Badge>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => navigate(`/project/${projectId}/editor/${note.id}`)}
+                        >
+                          <Edit className="w-4 h-4 mr-2" />
+                          Edit
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleUseNote(note, 'flashcards')}
+                        >
+                          <Brain className="w-4 h-4 mr-2" />
+                          Flashcards
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleUseNote(note, 'quiz')}
+                        >
+                          <Target className="w-4 h-4 mr-2" />
+                          Quiz
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleUseNote(note, 'match')}
                         >
                           <Zap className="w-4 h-4 mr-2" />
                           Match

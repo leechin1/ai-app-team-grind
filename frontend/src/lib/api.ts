@@ -261,6 +261,15 @@ export const quizAPI = {
   },
 
   /**
+   * Get all quiz questions for a project
+   */
+  async list(projectId: string) {
+    return fetchAPI<{ questions: QuizQuestion[]; total: number }>(`/api/projects/${projectId}/quiz-questions`, {
+      method: 'GET',
+    });
+  },
+
+  /**
    * Submit quiz answers
    */
   async submit(quiz_id: string, answers: any[]) {
@@ -435,6 +444,90 @@ export async function chatWithAI(
   });
 }
 
+// ==================== Note Types & API ====================
+
+export interface Note {
+  id: string;
+  project_id: string;
+  user_id: string;
+  title: string;
+  content: string;
+  content_html: string;
+  course?: string;
+  due_date?: string;
+  type: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface NoteCreate {
+  project_id: string;
+  title?: string;
+  content?: string;
+  content_html?: string;
+  course?: string;
+  due_date?: string;
+  type?: string;
+}
+
+export interface NoteUpdate {
+  title?: string;
+  content?: string;
+  content_html?: string;
+  course?: string;
+  due_date?: string;
+  type?: string;
+}
+
+export const noteAPI = {
+  /**
+   * Create a new note
+   */
+  async create(note: NoteCreate) {
+    return fetchAPI<Note>('/api/notes', {
+      method: 'POST',
+      body: JSON.stringify(note),
+    });
+  },
+
+  /**
+   * Get all notes for a project
+   */
+  async list(projectId: string) {
+    return fetchAPI<{ notes: Note[]; total: number }>(`/api/projects/${projectId}/notes`, {
+      method: 'GET',
+    });
+  },
+
+  /**
+   * Get a single note by ID
+   */
+  async getById(noteId: string) {
+    return fetchAPI<Note>(`/api/notes/${noteId}`, {
+      method: 'GET',
+    });
+  },
+
+  /**
+   * Update a note
+   */
+  async update(noteId: string, update: NoteUpdate) {
+    return fetchAPI<Note>(`/api/notes/${noteId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(update),
+    });
+  },
+
+  /**
+   * Delete a note
+   */
+  async delete(noteId: string) {
+    return fetchAPI<{ message: string }>(`/api/notes/${noteId}`, {
+      method: 'DELETE',
+    });
+  },
+};
+
 // ==================== Health Check API ====================
 
 export const healthAPI = {
@@ -461,5 +554,6 @@ export default {
   match: matchAPI,
   stats: statsAPI,
   document: documentAPI,
+  note: noteAPI,
   health: healthAPI,
 };

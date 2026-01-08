@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { flashcardAPI, type FlashCard } from "@/lib/api";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -88,7 +89,12 @@ export default function Flashcards() {
 
   const allCards = allCardsData?.flashcards || [];
   const dueCards = dueData?.due_cards || [];
-  const currentCard = dueCards[currentCardIndex];
+
+  // Get cards to review based on selection
+  const reviewCards = viewMode === 'review' && selectedCards.size > 0
+    ? allCards.filter(card => selectedCards.has(card.id))
+    : dueCards;
+  const currentCard = reviewCards[currentCardIndex];
 
   // Generate flashcards mutation
   const generateMutation = useMutation({
@@ -122,12 +128,12 @@ export default function Flashcards() {
       queryClient.invalidateQueries({ queryKey: ['flashcards'] });
 
       // Move to next card
-      if (currentCardIndex < dueCards.length - 1) {
+      if (currentCardIndex < reviewCards.length - 1) {
         setCurrentCardIndex(currentCardIndex + 1);
         setIsFlipped(false);
         setReviewStartTime(Date.now());
       } else {
-        // Finished all due cards
+        // Finished all cards
         toast.success('All cards reviewed! Great job!');
         setViewMode('menu');
         setCurrentCardIndex(0);
@@ -166,6 +172,36 @@ export default function Flashcards() {
     });
   };
 
+  // Selection handlers
+  const handleToggleCard = (cardId: string) => {
+    const newSelection = new Set(selectedCards);
+    if (newSelection.has(cardId)) {
+      newSelection.delete(cardId);
+    } else {
+      newSelection.add(cardId);
+    }
+    setSelectedCards(newSelection);
+  };
+
+  const handleSelectAll = () => {
+    if (selectedCards.size === allCards.length) {
+      setSelectedCards(new Set());
+    } else {
+      setSelectedCards(new Set(allCards.map(c => c.id)));
+    }
+  };
+
+  const handleStartReview = () => {
+    if (selectedCards.size === 0) {
+      toast.error('Please select at least one flashcard');
+      return;
+    }
+    setViewMode('review');
+    setCurrentCardIndex(0);
+    setIsFlipped(false);
+    setReviewStartTime(Date.now());
+  };
+
   const getDifficultyColor = (diff: string) => {
     switch (diff) {
       case 'easy': return 'bg-green-500/20 text-green-700 dark:text-green-400';
@@ -202,9 +238,9 @@ export default function Flashcards() {
                 <span className="text-xl font-bold">Flashcards</span>
               </div>
             </div>
-            {viewMode === 'review' && dueCards.length > 0 && (
+            {viewMode === 'review' && reviewCards.length > 0 && (
               <div className="text-sm text-muted-foreground">
-                Card {currentCardIndex + 1} of {dueCards.length}
+                Card {currentCardIndex + 1} of {reviewCards.length}
               </div>
             )}
           </div>
@@ -223,19 +259,15 @@ export default function Flashcards() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => setViewMode('review')}>
+              <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => setViewMode('browse')}>
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <Play className="w-8 h-8 text-primary" />
-                    {dueLoading ? (
-                      <Badge variant="secondary">Loading...</Badge>
-                    ) : (
-                      <Badge className="bg-primary">{dueData?.total_due || 0} due</Badge>
-                    )}
+                    <Badge className="bg-primary">{allCards.length} cards</Badge>
                   </div>
                   <CardTitle>Review Cards</CardTitle>
                   <CardDescription>
-                    Review flashcards that are due for spaced repetition
+                    Select flashcards to review with spaced repetition
                   </CardDescription>
                 </CardHeader>
               </Card>
@@ -338,30 +370,111 @@ export default function Flashcards() {
           </div>
         )}
 
+        {/* Browse View - Select Flashcards */}
+        {viewMode === 'browse' && (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-2xl font-bold">Select Flashcards</h2>
+                <p className="text-muted-foreground">
+                  Choose flashcards to review
+                </p>
+              </div>
+              <Button variant="outline" onClick={() => setViewMode('menu')}>
+                Back
+              </Button>
+            </div>
+
+            {allCards.length === 0 ? (
+              <Card>
+                <CardContent className="py-12 text-center">
+                  <p className="text-muted-foreground mb-4">
+                    No flashcards available. Generate some flashcards first!
+                  </p>
+                  <Button onClick={() => setViewMode('generate')}>
+                    Generate Flashcards
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : (
+              <>
+                <div className="flex items-center justify-between">
+                  <Button variant="outline" size="sm" onClick={handleSelectAll}>
+                    {selectedCards.size === allCards.length ? 'Deselect All' : 'Select All'}
+                  </Button>
+                  <div className="text-sm text-muted-foreground">
+                    {selectedCards.size} selected
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  {allCards.map((card) => (
+                    <Card key={card.id} className="hover:bg-accent/50 transition-colors">
+                      <CardContent className="py-4">
+                        <div className="flex items-start gap-4">
+                          <Checkbox
+                            checked={selectedCards.has(card.id)}
+                            onCheckedChange={() => handleToggleCard(card.id)}
+                          />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-start justify-between gap-4">
+                              <div className="flex-1">
+                                <p className="font-medium">{card.front}</p>
+                                <p className="text-sm text-muted-foreground mt-1">{card.back}</p>
+                                <div className="flex gap-2 mt-2">
+                                  <Badge className={getDifficultyColor(card.difficulty)}>
+                                    {card.difficulty}
+                                  </Badge>
+                                  {card.tags && card.tags.map((tag, i) => (
+                                    <Badge key={i} variant="outline">{tag}</Badge>
+                                  ))}
+                                </div>
+                              </div>
+                              <div className="text-right flex-shrink-0">
+                                <Badge variant="outline" className="text-xs">
+                                  {card.source_name || 'Manual'}
+                                </Badge>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+
+                <div className="flex justify-end">
+                  <Button
+                    onClick={handleStartReview}
+                    disabled={selectedCards.size === 0}
+                    size="lg"
+                  >
+                    <Play className="w-4 h-4 mr-2" />
+                    Review Selected ({selectedCards.size} cards)
+                  </Button>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
         {/* Review View */}
         {viewMode === 'review' && (
           <div className="space-y-6">
-            {dueLoading ? (
-              <Card>
-                <CardContent className="py-12 text-center">
-                  <RotateCw className="w-12 h-12 animate-spin mx-auto mb-4 text-muted-foreground" />
-                  <p className="text-muted-foreground">Loading flashcards...</p>
-                </CardContent>
-              </Card>
-            ) : dueCards.length === 0 ? (
+            {reviewCards.length === 0 ? (
               <Card>
                 <CardContent className="py-12 text-center">
                   <Check className="w-12 h-12 mx-auto mb-4 text-green-500" />
-                  <h3 className="text-xl font-semibold mb-2">All caught up!</h3>
+                  <h3 className="text-xl font-semibold mb-2">No cards selected!</h3>
                   <p className="text-muted-foreground mb-6">
-                    No flashcards are due for review right now.
+                    Please go back and select flashcards to review.
                   </p>
-                  <Button onClick={() => setViewMode('menu')}>Back to Menu</Button>
+                  <Button onClick={() => setViewMode('browse')}>Select Flashcards</Button>
                 </CardContent>
               </Card>
             ) : currentCard ? (
               <>
-                <Progress value={(currentCardIndex / dueCards.length) * 100} className="h-2" />
+                <Progress value={(currentCardIndex / reviewCards.length) * 100} className="h-2" />
 
                 <div 
                   className="perspective-1000 cursor-pointer min-h-[400px]"
