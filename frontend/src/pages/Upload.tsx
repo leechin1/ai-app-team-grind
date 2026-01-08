@@ -64,23 +64,33 @@ export default function Upload() {
   };
 
   const handleUseDocument = (destination: 'flashcards' | 'quiz' | 'match') => {
-    if (!lastUploadedDoc) return;
+    if (!lastUploadedDoc || !projectId) return;
 
     setShowSuccessDialog(false);
 
     // Navigate to the destination with the content
-    navigate(`/${destination}`, { state: {
+    navigate(`/project/${projectId}/${destination}`, { state: {
       content: lastUploadedDoc.content,
       documentId: lastUploadedDoc.id,
       documentName: lastUploadedDoc.filename
     } });
   };
 
-  const handleUseExistingDocument = (doc: any, destination: 'flashcards' | 'quiz' | 'match') => {
-    navigate(`/${destination}`, { state: {
-      documentId: doc.id,
-      documentName: doc.filename
-    } });
+  const handleUseExistingDocument = async (doc: any, destination: 'flashcards' | 'quiz' | 'match') => {
+    if (!projectId) return;
+
+    // Fetch full document content first (list only has preview)
+    try {
+      const fullDoc = await documentAPI.getById(doc.id);
+      navigate(`/project/${projectId}/${destination}`, { state: {
+        content: fullDoc.content,
+        documentId: fullDoc.id,
+        documentName: fullDoc.filename
+      } });
+    } catch (error) {
+      toast.error('Failed to load document content');
+      console.error('Error loading document:', error);
+    }
   };
 
   return (

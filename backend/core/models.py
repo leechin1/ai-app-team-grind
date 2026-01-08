@@ -92,11 +92,11 @@ class FlashCard(BaseModel):
     # Total number of times this card has been reviewed
     review_count: int = 0
 
-class FlashcardGenerationRequest(BaseModel) : 
-    """ 
+class FlashcardGenerationRequest(BaseModel) :
+    """
     Data used to generate flash cards\
-    
-    exemple : 
+
+    exemple :
 
         {
     "content": "A mitocôndria é...",
@@ -104,7 +104,7 @@ class FlashcardGenerationRequest(BaseModel) :
     "difficulty_filter": "medium",
     "topics": ["biologia", "célula"]
         }
-    
+
     """
     # content to generate the flashcards
     content : str = Field(..., min_length= 50)
@@ -112,8 +112,12 @@ class FlashcardGenerationRequest(BaseModel) :
     # number of generated cards
     num_cards : int = Field(default = 10 , ge = 1, le = 50)
 
-    # difficulty filter 
+    # difficulty filter
     difficulty_filter: Optional[DifficultyLevel] = None
+
+    # source tracking
+    source_id: Optional[str] = None
+    source_name: Optional[str] = None
 
 class FlashcardGenerationResponse(BaseModel): 
     """

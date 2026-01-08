@@ -17,7 +17,7 @@ import { flashcardAPI, type FlashCard } from "@/lib/api";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
-type ViewMode = 'menu' | 'generate' | 'review';
+type ViewMode = 'menu' | 'generate' | 'browse' | 'review';
 
 export default function Flashcards() {
   const navigate = useNavigate();
@@ -25,6 +25,7 @@ export default function Flashcards() {
   const { projectId } = useParams<{ projectId: string }>();
   const queryClient = useQueryClient();
   const [viewMode, setViewMode] = useState<ViewMode>('menu');
+  const [selectedCards, setSelectedCards] = useState<Set<string>>(new Set());
 
   // Generation state
   const [content, setContent] = useState('');
@@ -44,6 +45,11 @@ export default function Flashcards() {
     if (uploadedContent) {
       setContent(uploadedContent);
       setViewMode('generate');
+      // Store source document info for tracking
+      if (documentId) {
+        setFilterDocumentId(documentId);
+        setFilterDocumentName(documentName);
+      }
       toast.info('PDF content loaded! Ready to generate flashcards.');
     }
 
@@ -60,32 +66,38 @@ export default function Flashcards() {
   const [isFlipped, setIsFlipped] = useState(false);
   const [reviewStartTime, setReviewStartTime] = useState<number>(Date.now());
 
-  // Fetch due flashcards (filtered by document if specified)
-  const { data: dueData, isLoading: dueLoading } = useQuery({
-    queryKey: ['flashcards', 'due', filterDocumentId],
-    queryFn: async () => {
-      if (filterDocumentId) {
-        // Get flashcards for specific document
-        const result = await flashcardAPI.byDocument(filterDocumentId);
-        return {
-          due_cards: result.flashcards || [],
-          total_due: result.total || 0
-        };
-      } else {
-        // Get all due flashcards
-        return flashcardAPI.getDue();
-      }
+  // Fetch all flashcards for browsing
+  const { data: allCardsData } = useQuery({
+    queryKey: ['flashcards', projectId],
+    queryFn: () => {
+      if (!projectId) throw new Error("No project selected");
+      return flashcardAPI.list(projectId);
     },
-    enabled: viewMode === 'review',
+    enabled: !!projectId && viewMode === 'browse',
   });
 
+  // Fetch due flashcards for review
+  const { data: dueData, isLoading: dueLoading } = useQuery({
+    queryKey: ['flashcards', 'due', projectId],
+    queryFn: () => {
+      if (!projectId) throw new Error("No project selected");
+      return flashcardAPI.getDue(projectId);
+    },
+    enabled: !!projectId && viewMode === 'review',
+  });
+
+  const allCards = allCardsData?.flashcards || [];
   const dueCards = dueData?.due_cards || [];
   const currentCard = dueCards[currentCardIndex];
 
   // Generate flashcards mutation
   const generateMutation = useMutation({
-    mutationFn: (data: { content: string; num_flashcards: number; difficulty: string }) =>
-      flashcardAPI.generate(data),
+    mutationFn: (data: { content: string; num_flashcards: number; difficulty: string }) => {
+      if (!projectId) {
+        throw new Error("No project selected");
+      }
+      return flashcardAPI.generate(data, projectId);
+    },
     onSuccess: (data) => {
       toast.success(`Generated ${data.flashcards.length} flashcards!`);
       queryClient.invalidateQueries({ queryKey: ['flashcards'] });
@@ -136,13 +148,15 @@ export default function Flashcards() {
       content,
       num_flashcards: numCards,
       difficulty,
+      source_id: filterDocumentId || undefined,
+      source_name: filterDocumentName || undefined,
     });
   };
 
   const handleReviewResponse = (quality: number, wasCorrect: boolean) => {
     if (!currentCard) return;
 
-    const timeSpent = (Date.now() - reviewStartTime) / 1000;
+    const timeSpent = Math.round((Date.now() - reviewStartTime) / 1000);
 
     reviewMutation.mutate({
       flashcard_id: currentCard.id,

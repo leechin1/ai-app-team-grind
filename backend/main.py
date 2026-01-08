@@ -308,7 +308,21 @@ async def get_document(doc_id: str, user: dict = Depends(get_current_user)):
         doc = await db.get_document(doc_id, user["id"])
         if not doc:
             raise HTTPException(404, "Document not found")
-        return doc
+
+        # Transform for frontend compatibility
+        preview = doc.extracted_text[:200] + "..." if doc.extracted_text and len(doc.extracted_text) > 200 else (doc.extracted_text or "")
+        return {
+            "id": doc.id,
+            "filename": doc.filename,
+            "content": doc.extracted_text or "",  # Map extracted_text to content
+            "preview": preview,
+            "uploaded_at": doc.created_at.isoformat() if hasattr(doc.created_at, 'isoformat') else str(doc.created_at),
+            "metadata": {
+                "file_size": doc.file_size,
+                "mime_type": doc.mime_type,
+                "page_count": doc.page_count
+            }
+        }
     except HTTPException:
         raise
     except Exception as e:
@@ -336,7 +350,7 @@ async def generate_flashcards(
             difficulty_filter=difficulty
         )
 
-        # Save to database
+        # Save to database with source tracking
         for card in response.flashcards:
             card_data = FlashcardCreate(
                 project_id=project_id,
@@ -344,7 +358,9 @@ async def generate_flashcards(
                 back=card.back,
                 tags=card.tags,
                 difficulty=card.difficulty.value,
-                source_type="manual"
+                source_type="document" if request.source_id else "manual",
+                source_id=request.source_id,
+                source_name=request.source_name
             )
             await db.create_flashcard(user["id"], card_data)
 
@@ -496,11 +512,15 @@ async def generate_quiz(
     user: dict = Depends(get_current_user)
 ):
     """Generate quiz questions from content using AI"""
+    import json
+
     try:
         content = request.get("content", "")
         num_questions = request.get("num_questions", 5)
         difficulty = request.get("difficulty", "medium")
         project_id = request.get("project_id")
+        source_id = request.get("source_id")
+        source_name = request.get("source_name")
 
         if not project_id:
             raise HTTPException(400, "project_id is required")
@@ -509,63 +529,37 @@ async def generate_quiz(
             raise HTTPException(400, "Content must be at least 50 characters")
 
         # Generate quiz using AI
-        prompt = f"""Generate {num_questions} multiple-choice quiz questions from this content.
-Difficulty: {difficulty}
+        api_key = os.getenv("GEMINI_API_KEY")
+        if not api_key:
+            raise HTTPException(500, "Gemini API key not configured")
 
-Content:
-{content}
+        generator = AIContentGenerator(api_key=api_key)
 
-Return a JSON array of questions with this exact format:
-[
-  {{
-    "question": "What is...",
-    "options": ["Option A", "Option B", "Option C", "Option D"],
-    "correct_answer": "Option A",
-    "explanation": "Brief explanation..."
-  }}
-]
+        # Use the proper quiz generation method
+        difficulty_level = DifficultyLevel(difficulty) if difficulty in ['easy', 'medium', 'hard'] else None
+        questions = generator.generate_quiz(
+            content=content,
+            num_questions=num_questions,
+            difficulty_filter=difficulty_level
+        )
 
-Make sure:
-- Questions test understanding, not just memorization
-- All 4 options are plausible
-- Explanations are clear and concise
-"""
-
-        response = ai_generator.generate_content(prompt)
-
-        # Parse JSON from response
-        import json
-        import re
-
-        # Extract JSON from markdown code blocks if present
-        json_match = re.search(r'```(?:json)?\s*(\[.*?\])\s*```', response["reply"], re.DOTALL)
-        if json_match:
-            json_str = json_match.group(1)
-        else:
-            # Try to find JSON array directly
-            json_match = re.search(r'\[.*\]', response["reply"], re.DOTALL)
-            if json_match:
-                json_str = json_match.group(0)
-            else:
-                raise HTTPException(500, "Failed to parse AI response")
-
-        questions_data = json.loads(json_str)
-
-        # Save questions to database
+        # Save questions to database with source tracking
         from core.db_models import QuizQuestionCreate
         saved_questions = []
 
-        for q_data in questions_data[:num_questions]:
-            question = QuizQuestionCreate(
+        for q in questions:
+            question_data = QuizQuestionCreate(
                 project_id=project_id,
-                source_type="manual",
-                question=q_data["question"],
-                options=q_data["options"],
-                correct_answer=q_data["correct_answer"],
-                explanation=q_data.get("explanation", ""),
-                difficulty=difficulty
+                source_type="document" if source_id else "manual",
+                source_id=source_id,
+                source_name=source_name,
+                question=q.question,
+                options=q.options,
+                correct_answer=q.options[q.correct_answer_index],
+                explanation=q.explanation,
+                difficulty=q.difficulty.value
             )
-            saved = await db.create_quiz_question(user["id"], question)
+            saved = await db.create_quiz_question(user["id"], question_data)
             saved_questions.append(saved)
 
         # Format response for frontend
@@ -626,6 +620,8 @@ async def generate_match_quiz(
         num_pairs = request.get("num_pairs", 5)
         difficulty = request.get("difficulty", "medium")
         project_id = request.get("project_id")
+        source_id = request.get("source_id")
+        source_name = request.get("source_name")
         use_flashcards = not content  # If no content, use flashcards
 
         if not project_id:
@@ -702,7 +698,9 @@ Make sure:
             for p_data in pairs_data[:num_pairs]:
                 pair = MatchPairCreate(
                     project_id=project_id,
-                    source_type="manual",
+                    source_type="document" if source_id else "manual",
+                    source_id=source_id,
+                    source_name=source_name,
                     term=p_data["term"],
                     definition=p_data["definition"]
                 )

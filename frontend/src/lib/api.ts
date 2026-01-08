@@ -45,6 +45,8 @@ export interface GenerateFlashcardsRequest {
   num_flashcards?: number;
   difficulty?: 'easy' | 'medium' | 'hard';
   focus_topics?: string[];
+  source_id?: string;
+  source_name?: string;
 }
 
 export interface GenerateQuizRequest {
@@ -52,6 +54,8 @@ export interface GenerateQuizRequest {
   num_questions?: number;
   difficulty?: 'easy' | 'medium' | 'hard';
   focus_topics?: string[];
+  source_id?: string;
+  source_name?: string;
 }
 
 export interface GenerateMatchQuizRequest {
@@ -59,6 +63,8 @@ export interface GenerateMatchQuizRequest {
   num_pairs?: number;
   difficulty?: 'easy' | 'medium' | 'hard';
   focus_topics?: string[];
+  source_id?: string;
+  source_name?: string;
 }
 
 export interface ReviewFlashcardRequest {
@@ -183,25 +189,36 @@ export const flashcardAPI = {
   /**
    * Generate flashcards from text content
    */
-  async generate(request: GenerateFlashcardsRequest) {
+  async generate(request: GenerateFlashcardsRequest, projectId: string) {
     // Map frontend field names to backend expected names
     const backendRequest = {
       content: request.content,
       num_cards: request.num_flashcards || 10,
       difficulty_filter: request.difficulty,
+      source_id: request.source_id,
+      source_name: request.source_name,
     };
-    
-    return fetchAPI<{ flashcards: FlashCard[] }>('/api/flashcards/generate', {
+
+    return fetchAPI<{ flashcards: FlashCard[] }>(`/api/flashcards/generate?project_id=${projectId}`, {
       method: 'POST',
       body: JSON.stringify(backendRequest),
     });
   },
 
   /**
+   * Get all flashcards for a project
+   */
+  async list(projectId: string) {
+    return fetchAPI<{ flashcards: FlashCard[]; total: number }>(`/api/projects/${projectId}/flashcards`, {
+      method: 'GET',
+    });
+  },
+
+  /**
    * Get flashcards that are due for review
    */
-  async getDue() {
-    return fetchAPI<{ due_cards: FlashCard[]; total_due: number }>('/api/flashcards/due', {
+  async getDue(projectId: string, limit: number = 20) {
+    return fetchAPI<{ due_cards: FlashCard[]; total_due: number }>(`/api/projects/${projectId}/flashcards/due?limit=${limit}`, {
       method: 'GET',
     });
   },
@@ -228,27 +245,6 @@ export const flashcardAPI = {
       body: JSON.stringify(request),
     });
   },
-
-  /**
-   * Get flashcards by document (filtered or grouped)
-   */
-  async byDocument(documentId?: string) {
-    const url = documentId
-      ? `/api/flashcards/by-document?document_id=${documentId}`
-      : '/api/flashcards/by-document';
-
-    return fetchAPI<{
-      by_document?: Array<{
-        document_id: string;
-        document_name: string;
-        flashcards: FlashCard[];
-        count: number;
-      }>;
-      flashcards?: FlashCard[];
-      total: number;
-      document_id?: string;
-    }>(url);
-  },
 };
 
 // ==================== Quiz API ====================
@@ -257,10 +253,10 @@ export const quizAPI = {
   /**
    * Generate a multiple-choice quiz
    */
-  async generate(request: GenerateQuizRequest) {
+  async generate(request: GenerateQuizRequest, projectId: string) {
     return fetchAPI<{ quiz_id: string; questions: QuizQuestion[] }>('/api/quiz/generate', {
       method: 'POST',
-      body: JSON.stringify(request),
+      body: JSON.stringify({ ...request, project_id: projectId }),
     });
   },
 
@@ -281,10 +277,10 @@ export const matchAPI = {
   /**
    * Generate a matching quiz
    */
-  async generate(request: GenerateMatchQuizRequest) {
+  async generate(request: GenerateMatchQuizRequest, projectId: string) {
     return fetchAPI<{ match_quiz_id: string; pairs: MatchPair[] }>('/api/match/generate', {
       method: 'POST',
-      body: JSON.stringify(request),
+      body: JSON.stringify({ ...request, project_id: projectId }),
     });
   },
 

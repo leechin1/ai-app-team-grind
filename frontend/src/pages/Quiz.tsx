@@ -37,12 +37,22 @@ export default function Quiz() {
   const [content, setContent] = useState('');
   const [numQuestions, setNumQuestions] = useState(5);
   const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium');
+  const [sourceDocumentId, setSourceDocumentId] = useState<string | null>(null);
+  const [sourceDocumentName, setSourceDocumentName] = useState<string | null>(null);
 
   // Check if content was passed from Upload page
   useEffect(() => {
-    const uploadedContent = (location.state as any)?.content;
+    const state = location.state as any;
+    const uploadedContent = state?.content;
+    const documentId = state?.documentId;
+    const documentName = state?.documentName;
+
     if (uploadedContent) {
       setContent(uploadedContent);
+      if (documentId) {
+        setSourceDocumentId(documentId);
+        setSourceDocumentName(documentName);
+      }
       toast.info('PDF content loaded! Ready to generate quiz.');
     }
   }, [location.state]);
@@ -52,8 +62,12 @@ export default function Quiz() {
 
   // Generate quiz mutation
   const generateMutation = useMutation({
-    mutationFn: (data: { content: string; num_questions: number; difficulty: string }) =>
-      quizAPI.generate(data),
+    mutationFn: (data: { content: string; num_questions: number; difficulty: string }) => {
+      if (!projectId) {
+        throw new Error("No project selected");
+      }
+      return quizAPI.generate(data, projectId);
+    },
     onSuccess: (data) => {
       const now = Date.now();
       setQuizState({
@@ -95,6 +109,8 @@ export default function Quiz() {
       num_questions: numQuestions,
       difficulty,
       project_id: projectId,
+      source_id: sourceDocumentId || undefined,
+      source_name: sourceDocumentName || undefined,
     });
   };
 

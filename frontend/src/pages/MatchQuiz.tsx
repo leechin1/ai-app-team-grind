@@ -39,13 +39,23 @@ export default function MatchQuiz() {
   const [content, setContent] = useState('');
   const [numPairs, setNumPairs] = useState(5);
   const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium');
+  const [sourceDocumentId, setSourceDocumentId] = useState<string | null>(null);
+  const [sourceDocumentName, setSourceDocumentName] = useState<string | null>(null);
 
   // Check if content was passed from Upload page
   useEffect(() => {
-    const uploadedContent = (location.state as any)?.content;
+    const state = location.state as any;
+    const uploadedContent = state?.content;
+    const documentId = state?.documentId;
+    const documentName = state?.documentName;
+
     if (uploadedContent) {
       setContent(uploadedContent);
       setUseExistingFlashcards(false);
+      if (documentId) {
+        setSourceDocumentId(documentId);
+        setSourceDocumentName(documentName);
+      }
       toast.info('PDF content loaded! Ready to generate match quiz.');
     }
   }, [location.state]);
@@ -55,8 +65,12 @@ export default function MatchQuiz() {
 
   // Generate match quiz mutation
   const generateMutation = useMutation({
-    mutationFn: (data: { content: string; num_pairs: number; difficulty: string }) =>
-      matchAPI.generate(data),
+    mutationFn: (data: { content: string; num_pairs: number; difficulty: string }) => {
+      if (!projectId) {
+        throw new Error("No project selected");
+      }
+      return matchAPI.generate(data, projectId);
+    },
     onSuccess: (data) => {
       // Shuffle answers
       const shuffledAnswers = data.pairs
@@ -104,6 +118,8 @@ export default function MatchQuiz() {
       num_pairs: numPairs,
       difficulty,
       project_id: projectId,
+      source_id: sourceDocumentId || undefined,
+      source_name: sourceDocumentName || undefined,
     });
   };
 
