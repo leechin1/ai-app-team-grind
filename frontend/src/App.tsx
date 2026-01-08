@@ -47,6 +47,14 @@ const App = () => (
             }
           />
           <Route
+            path="/project/:projectId/editor/:noteId"
+            element={
+              <ProtectedRoute>
+                <Editor />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/project/:projectId/chatiq"
             element={
               <ProtectedRoute>

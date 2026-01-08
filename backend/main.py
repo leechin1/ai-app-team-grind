@@ -557,7 +557,7 @@ async def generate_quiz(
                 options=q.options,
                 correct_answer=q.options[q.correct_answer_index],
                 explanation=q.explanation,
-                difficulty=q.difficulty.value
+                difficulty=difficulty  # Use difficulty from request, not from question object
             )
             saved = await db.create_quiz_question(user["id"], question_data)
             saved_questions.append(saved)
