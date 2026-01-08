@@ -288,7 +288,17 @@ async def upload_document(
 async def get_documents(project_id: str, user: dict = Depends(get_current_user)):
     try:
         docs = await db.get_project_documents(project_id, user["id"])
-        return {"documents": docs, "total": len(docs)}
+        # Transform documents for frontend compatibility
+        transformed_docs = []
+        for doc in docs:
+            preview = doc.extracted_text[:200] + "..." if doc.extracted_text and len(doc.extracted_text) > 200 else (doc.extracted_text or "")
+            transformed_docs.append({
+                "id": doc.id,
+                "filename": doc.filename,
+                "preview": preview,
+                "uploaded_at": doc.created_at.isoformat() if hasattr(doc.created_at, 'isoformat') else str(doc.created_at)
+            })
+        return {"documents": transformed_docs, "total": len(transformed_docs)}
     except Exception as e:
         raise HTTPException(500, str(e))
 

@@ -27,12 +27,21 @@ export default function Upload() {
 
   // Fetch list of uploaded documents
   const { data: documentsData } = useQuery({
-    queryKey: ['documents'],
-    queryFn: () => documentAPI.list(),
+    queryKey: ['documents', projectId],
+    queryFn: () => {
+      if (!projectId) throw new Error("No project selected");
+      return documentAPI.list(projectId);
+    },
+    enabled: !!projectId,
   });
 
   const uploadMutation = useMutation({
-    mutationFn: (file: File) => documentAPI.upload(file),
+    mutationFn: (file: File) => {
+      if (!projectId) {
+        throw new Error("No project selected");
+      }
+      return documentAPI.upload(file, projectId);
+    },
     onSuccess: (data) => {
       setLastUploadedDoc(data);
       setShowSuccessDialog(true);

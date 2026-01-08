@@ -332,11 +332,11 @@ export const documentAPI = {
   /**
    * Upload a document (PDF, TXT, etc.)
    */
-  async upload(file: File) {
+  async upload(file: File, projectId: string) {
     const formData = new FormData();
     formData.append('file', file);
 
-    const response = await fetch(`${API_BASE_URL}/api/documents/upload`, {
+    const response = await fetch(`${API_BASE_URL}/api/documents/upload?project_id=${projectId}`, {
       method: 'POST',
       body: formData,
     });
@@ -355,15 +355,15 @@ export const documentAPI = {
   },
 
   /**
-   * List all uploaded documents
+   * List all uploaded documents for a project
    */
-  async list() {
+  async list(projectId: string) {
     return fetchAPI<{ documents: Array<{
       id: string;
       filename: string;
       preview: string;
       uploaded_at: string;
-    }> }>('/api/documents');
+    }>; total: number }>(`/api/projects/${projectId}/documents`);
   },
 
   /**
