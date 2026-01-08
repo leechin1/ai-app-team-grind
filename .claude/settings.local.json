@@ -17,7 +17,11 @@
       "Bash(taskkill:*)",
       "Bash(copy:*)",
       "Bash(where:*)",
-      "Bash(start /B npm run dev)"
+      "Bash(start /B npm run dev)",
+      "Bash(notiq_envScriptspip.exe uninstall -y google-generativeai)",
+      "Bash(notiq_envScriptspip.exe install google-genai)",
+      "Bash(notiq_env/Scripts/pip.exe:*)",
+      "Bash(notiq_env/Scripts/pip.exe install:*)"
     ],
     "deny": [],
     "ask": []

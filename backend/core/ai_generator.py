@@ -11,7 +11,7 @@ Este módulo implementa a lógica de:
 - Observabilidade com Langfuse
 """
 
-import google.generativeai as genai
+from google import genai
 import json
 import re
 import time

@@ -16,26 +16,25 @@ class SupabaseEmbeddingsService:
     def generate_embedding_gemini(self, text: str) -> List[float]:
         """Generate embedding using Gemini"""
         try:
-            import google.generativeai as genai
+            from google import genai
 
             api_key = os.getenv("GEMINI_API_KEY")
             if not api_key:
                 return self.generate_embedding_fallback(text)
 
-            genai.configure(api_key=api_key)
+            client = genai.Client(api_key=api_key)
 
-            # Use Gemini's embedding model
-            result = genai.embed_content(
-                model="models/embedding-001",
-                content=text,
-                task_type="retrieval_document"
+            # Use Gemini's embedding model with new API
+            result = client.models.embed_content(
+                model="models/text-embedding-004",
+                content=text
             )
 
-            embedding = result['embedding']
+            embedding = result.embeddings[0].values
 
             # Pad to 1536 dimensions to match schema
             if len(embedding) < 1536:
-                embedding = embedding + [0.0] * (1536 - len(embedding))
+                embedding = list(embedding) + [0.0] * (1536 - len(embedding))
 
             return embedding[:1536]
 
