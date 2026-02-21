@@ -13,6 +13,7 @@ import Quiz from "./pages/Quiz";
 import MatchQuiz from "./pages/MatchQuiz";
 import Upload from "./pages/Upload";
 import Review from "./pages/Review";
+import StudyStats from "./pages/StudyStats";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -99,6 +100,14 @@ const App = () => (
             element={
               <ProtectedRoute>
                 <Review />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/project/:projectId/stats"
+            element={
+              <ProtectedRoute>
+                <StudyStats />
               </ProtectedRoute>
             }
           />

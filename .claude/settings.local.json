@@ -21,7 +21,8 @@
       "Bash(notiq_envScriptspip.exe uninstall -y google-generativeai)",
       "Bash(notiq_envScriptspip.exe install google-genai)",
       "Bash(notiq_env/Scripts/pip.exe:*)",
-      "Bash(notiq_env/Scripts/pip.exe install:*)"
+      "Bash(notiq_env/Scripts/pip.exe install:*)",
+      "Bash(npx tsc:*)"
     ],
     "deny": [],
     "ask": []

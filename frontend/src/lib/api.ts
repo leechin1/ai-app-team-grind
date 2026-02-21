@@ -304,6 +304,34 @@ export const matchAPI = {
   },
 };
 
+// ==================== Study Stats Types ====================
+
+export interface DayActivity {
+  date: string;
+  day_label: string;
+  reviews: number;
+  correct: number;
+}
+
+export interface StudyStats {
+  counts: {
+    total_flashcards: number;
+    total_quiz_questions: number;
+    total_match_pairs: number;
+    total_documents: number;
+    total_notes: number;
+  };
+  due_flashcards: number;
+  total_reviews: number;
+  reviews_today: number;
+  correct_today: number;
+  accuracy: number;
+  average_quality: number;
+  current_streak: number;
+  best_streak: number;
+  recent_activity: DayActivity[];
+}
+
 // ==================== Stats & Analytics API ====================
 
 export const statsAPI = {
@@ -312,6 +340,15 @@ export const statsAPI = {
    */
   async getStats() {
     return fetchAPI<Stats>('/api/stats', {
+      method: 'GET',
+    });
+  },
+
+  /**
+   * Get project study stats (streak, reviews, accuracy)
+   */
+  async getProjectStats(projectId: string) {
+    return fetchAPI<StudyStats>(`/api/projects/${projectId}/stats`, {
       method: 'GET',
     });
   },

@@ -7,7 +7,7 @@ from fastapi import FastAPI, HTTPException, Depends, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional
-from datetime import datetime
+from datetime import datetime, date, timedelta
 import os
 import uuid
 from dotenv import load_dotenv
@@ -758,6 +758,117 @@ async def submit_match_quiz(request: dict, user: dict = Depends(get_current_user
         return {
             "match_quiz_id": match_quiz_id,
             "message": "Match quiz submitted successfully"
+        }
+    except Exception as e:
+        raise HTTPException(500, str(e))
+
+
+# ==================== Study Stats ====================
+
+@app.get("/api/projects/{project_id}/stats")
+async def get_project_stats(project_id: str, user: dict = Depends(get_current_user)):
+    """Get study statistics for a project including streak, reviews today, accuracy"""
+    try:
+        # Get counts
+        counts = await db.get_project_stats_counts(project_id, user["id"])
+
+        # Get due flashcards count
+        due_cards = await db.get_due_flashcards(project_id, user["id"], limit=1000)
+        due_count = len(due_cards)
+
+        # Get all flashcard reviews for this project
+        reviews = await db.get_project_flashcard_reviews(project_id, user["id"])
+
+        total_reviews = len(reviews)
+
+        # Reviews today
+        today = date.today()
+        reviews_today = 0
+        correct_today = 0
+        for r in reviews:
+            reviewed_at = r.get("reviewed_at")
+            if reviewed_at:
+                review_date = datetime.fromisoformat(reviewed_at.replace("Z", "+00:00")).date()
+                if review_date == today:
+                    reviews_today += 1
+                    if r.get("quality", 0) >= 3:
+                        correct_today += 1
+
+        # Overall accuracy
+        correct_reviews = sum(1 for r in reviews if r.get("quality", 0) >= 3)
+        accuracy = round((correct_reviews / total_reviews * 100), 1) if total_reviews > 0 else 0.0
+
+        # Average quality
+        avg_quality = round(sum(r.get("quality", 0) for r in reviews) / total_reviews, 2) if total_reviews > 0 else 0.0
+
+        # Study streak: count consecutive days with at least 1 review going back from today
+        review_dates = set()
+        for r in reviews:
+            reviewed_at = r.get("reviewed_at")
+            if reviewed_at:
+                review_date = datetime.fromisoformat(reviewed_at.replace("Z", "+00:00")).date()
+                review_dates.add(review_date)
+
+        streak = 0
+        check_date = today
+        while check_date in review_dates:
+            streak += 1
+            check_date -= timedelta(days=1)
+
+        # If user hasn't studied today yet, check if they studied yesterday (streak not broken yet)
+        if streak == 0 and (today - timedelta(days=1)) in review_dates:
+            check_date = today - timedelta(days=1)
+            while check_date in review_dates:
+                streak += 1
+                check_date -= timedelta(days=1)
+
+        # Best streak
+        if review_dates:
+            sorted_dates = sorted(review_dates)
+            best_streak = 1
+            current_run = 1
+            for i in range(1, len(sorted_dates)):
+                if (sorted_dates[i] - sorted_dates[i - 1]).days == 1:
+                    current_run += 1
+                    best_streak = max(best_streak, current_run)
+                else:
+                    current_run = 1
+        else:
+            best_streak = 0
+
+        # Recent activity: reviews per day for the last 7 days
+        recent_activity = []
+        for i in range(6, -1, -1):
+            d = today - timedelta(days=i)
+            day_reviews = sum(
+                1 for r in reviews
+                if r.get("reviewed_at") and
+                datetime.fromisoformat(r["reviewed_at"].replace("Z", "+00:00")).date() == d
+            )
+            day_correct = sum(
+                1 for r in reviews
+                if r.get("reviewed_at") and
+                datetime.fromisoformat(r["reviewed_at"].replace("Z", "+00:00")).date() == d and
+                r.get("quality", 0) >= 3
+            )
+            recent_activity.append({
+                "date": d.isoformat(),
+                "day_label": d.strftime("%a"),
+                "reviews": day_reviews,
+                "correct": day_correct,
+            })
+
+        return {
+            "counts": counts,
+            "due_flashcards": due_count,
+            "total_reviews": total_reviews,
+            "reviews_today": reviews_today,
+            "correct_today": correct_today,
+            "accuracy": accuracy,
+            "average_quality": avg_quality,
+            "current_streak": streak,
+            "best_streak": best_streak,
+            "recent_activity": recent_activity,
         }
     except Exception as e:
         raise HTTPException(500, str(e))

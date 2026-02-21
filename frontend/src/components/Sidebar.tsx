@@ -1,5 +1,5 @@
 import { useNavigate, useLocation, useParams } from "react-router-dom";
-import { ArrowLeft, MessageCircle, Brain, Zap, Target, FolderOpen, LogOut, FileText } from "lucide-react";
+import { ArrowLeft, MessageCircle, Brain, Zap, Target, FolderOpen, LogOut, FileText, BarChart3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { authService } from "@/lib/auth";
 import { cn } from "@/lib/utils";
@@ -17,6 +17,7 @@ export default function Sidebar() {
     { name: "Match Quiz", icon: Zap, path: `/project/${projectId}/match` },
     { name: "Quiz", icon: Target, path: `/project/${projectId}/quiz` },
     { name: "Files", icon: FolderOpen, path: `/project/${projectId}/files` },
+    { name: "Stats", icon: BarChart3, path: `/project/${projectId}/stats` },
   ];
 
   const handleLogout = () => {

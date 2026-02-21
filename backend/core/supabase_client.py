@@ -306,6 +306,43 @@ class SupabaseService:
         result = self.client.table("match_pairs").delete().eq("id", pair_id).eq("user_id", user_id).execute()
         return len(result.data) > 0
 
+    # ============================================
+    # STUDY STATS OPERATIONS
+    # ============================================
+
+    async def get_project_flashcard_reviews(self, project_id: str, user_id: str) -> List[Dict[str, Any]]:
+        """Get all flashcard reviews for a project (joining flashcards to filter by project)"""
+        # Get flashcard IDs for this project
+        flashcards_result = self.client.table("flashcards").select("id").eq("project_id", project_id).eq("user_id", user_id).execute()
+        if not flashcards_result.data:
+            return []
+
+        flashcard_ids = [fc["id"] for fc in flashcards_result.data]
+
+        # Get reviews for those flashcards
+        reviews = []
+        for fc_id in flashcard_ids:
+            result = self.client.table("flashcard_reviews").select("*").eq("flashcard_id", fc_id).eq("user_id", user_id).execute()
+            reviews.extend(result.data)
+
+        return reviews
+
+    async def get_project_stats_counts(self, project_id: str, user_id: str) -> Dict[str, int]:
+        """Get counts of flashcards, quiz questions, and match pairs for a project"""
+        flashcards = self.client.table("flashcards").select("id", count="exact").eq("project_id", project_id).eq("user_id", user_id).execute()
+        quiz_questions = self.client.table("quiz_questions").select("id", count="exact").eq("project_id", project_id).eq("user_id", user_id).execute()
+        match_pairs = self.client.table("match_pairs").select("id", count="exact").eq("project_id", project_id).eq("user_id", user_id).execute()
+        documents = self.client.table("documents").select("id", count="exact").eq("project_id", project_id).eq("user_id", user_id).execute()
+        notes = self.client.table("notes").select("id", count="exact").eq("project_id", project_id).eq("user_id", user_id).execute()
+
+        return {
+            "total_flashcards": flashcards.count if flashcards.count is not None else len(flashcards.data),
+            "total_quiz_questions": quiz_questions.count if quiz_questions.count is not None else len(quiz_questions.data),
+            "total_match_pairs": match_pairs.count if match_pairs.count is not None else len(match_pairs.data),
+            "total_documents": documents.count if documents.count is not None else len(documents.data),
+            "total_notes": notes.count if notes.count is not None else len(notes.data),
+        }
+
 
 # Global instance
 db = SupabaseService()
