@@ -61,4 +61,9 @@ frontend/build/
 frontend/.env
 frontend/.env.local
 frontend/.env.production
-frontend/bun.lockb
+frontend/bun.lockb# --- append these to your existing .gitignore ---
+.env
+.ai/logs/
+.ai/reviews/
+.ai/BLOCKED.md
+__pycache__/
